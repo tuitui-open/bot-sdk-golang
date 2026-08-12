@@ -1,0 +1,14 @@
+# Local environment and credentials
+.env
+**/.env
+
+# Go build and test output
+/bin/
+/coverage.out
+*.test
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
