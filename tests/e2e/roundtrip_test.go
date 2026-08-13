@@ -30,8 +30,8 @@ func TestTwoBotRoundtrip(t *testing.T) {
 	token := fmt.Sprintf("go-roundtrip-%d", time.Now().UnixNano())
 	subscription := bot1.Event.Subscribe(ctx, &tuitui.SubscribeOptions{
 		OnConnected: func() { connected <- struct{}{} },
-		OnEvent: func(event tuitui.RawEvent) {
-			if body, ok := event["body"].(map[string]interface{}); ok && fmt.Sprint(body["event"]) == tuitui.EventGroupChat {
+		OnEvent: func(body tuitui.EventBody) {
+			if fmt.Sprint(body["event"]) == tuitui.EventGroupChat {
 				if data, ok := body["data"].(map[string]interface{}); ok && fmt.Sprint(data["text"]) == token {
 					select {
 					case received <- struct{}{}:

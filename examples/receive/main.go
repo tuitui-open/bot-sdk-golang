@@ -24,10 +24,9 @@ func main() {
 		OnConnected: func() {
 			log.Printf("tuitui bot(%s) 已连接websocket，正在监听事件", appID)
 		},
-		OnEvent: func(event tuitui.RawEvent) {
-			body := event["body"].(map[string]interface{})
+		OnEvent: func(body tuitui.EventBody) {
 			eventName := body["event"].(string)
-			rawJSON, _ := json.MarshalIndent(event, "", "  ")
+			rawJSON, _ := json.MarshalIndent(body, "", "  ")
 			log.Printf("收到事件:%s\n%s", eventName, rawJSON)
 			printMessage(eventName, body, client.Event)
 		},

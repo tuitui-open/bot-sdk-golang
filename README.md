@@ -1,6 +1,6 @@
 # 推推机器人 Go SDK
 
-推推机器人 Go SDK，业务行为与 `@qihoo/tuitui-bot-sdk` 1.0.13 保持一致。
+推推机器人 Go SDK，移植自 TypeScript 包 `@qihoo/tuitui-bot-sdk`。
 
 ## 安装
 

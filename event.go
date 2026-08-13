@@ -30,10 +30,15 @@ const (
 	EventInteractiveAction  = "interactive_action"
 )
 
-type RawEvent map[string]interface{}
+type EventBody map[string]interface{}
+type eventEnvelope struct {
+	EventID string                 `json:"event_id"`
+	Header  map[string]interface{} `json:"header"`
+	Body    EventBody              `json:"body"`
+}
 type MessageMedia struct{ MIMEType, URL string }
 type SubscribeOptions struct {
-	OnEvent           func(RawEvent)
+	OnEvent           func(EventBody)
 	OnConnected       func()
 	OnDisconnected    func(error)
 	OnError           func(error)
@@ -165,12 +170,12 @@ func (s *Subscription) receive(connection *websocket.Conn) error {
 		if err != nil {
 			return err
 		}
-		var event RawEvent
+		var event eventEnvelope
 		if err := json.Unmarshal(data, &event); err != nil {
 			s.report(err)
 			continue
 		}
-		eventID, _ := event["event_id"].(string)
+		eventID := event.EventID
 		if eventID == "" {
 			s.report(fmt.Errorf("[tuitui] WebSocket event missing event_id"))
 			continue
@@ -183,26 +188,28 @@ func (s *Subscription) receive(connection *websocket.Conn) error {
 		if !s.record(eventID) {
 			continue
 		}
-		body, _ := event["body"].(map[string]interface{})
+		body := event.Body
 		if body["event"] == "keepalive" {
 			continue
 		}
-		header, _ := event["header"].(map[string]interface{})
-		if appID, ok := header["X-Tuitui-Robot-Appid"].(string); ok && appID != s.config.appID {
+		if appID, ok := event.Header["X-Tuitui-Robot-Appid"].(string); ok && appID != s.config.appID {
 			s.report(fmt.Errorf("[tuitui] event app_id does not match client app_id"))
 			continue
 		}
-		if err := s.normalizeMessage(event); err != nil {
+		if body == nil {
+			s.report(fmt.Errorf("[tuitui] WebSocket event missing body"))
+			continue
+		}
+		if err := s.normalizeMessage(body); err != nil {
 			s.report(err)
 			continue
 		}
 		if s.options.OnEvent != nil {
-			s.options.OnEvent(event)
+			s.options.OnEvent(body)
 		}
 	}
 }
-func (s *Subscription) normalizeMessage(event RawEvent) error {
-	body, _ := event["body"].(map[string]interface{})
+func (s *Subscription) normalizeMessage(body EventBody) error {
 	kind, _ := body["event"].(string)
 	if kind != EventSingleChat && kind != EventGroupChat {
 		return nil
