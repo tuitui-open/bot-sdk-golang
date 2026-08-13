@@ -33,4 +33,4 @@ go run ./examples/send-post --team 123456 --channel 789012
 go run ./examples/receive
 ```
 
-连接成功后持续输出原始事件，按 `Ctrl+C` 取消订阅并退出。
+连接成功后持续输出事件，按 `Ctrl+C` 退出。

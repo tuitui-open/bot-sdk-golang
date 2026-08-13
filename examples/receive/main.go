@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
 	"os"
-	"os/signal"
 
 	tuitui "github.com/tuitui-open/bot-sdk-golang"
 	"github.com/tuitui-open/bot-sdk-golang/internal/dotenv"
@@ -15,27 +14,57 @@ func main() {
 	if err := dotenv.LoadClosest(); err != nil {
 		log.Fatal(err)
 	}
-	client, err := tuitui.NewClient(
-		os.Getenv("TUITUI_BOT_APPID"),
-		os.Getenv("TUITUI_BOT_SECRET"),
-		nil,
-	)
+	appID := os.Getenv("TUITUI_BOT_APPID")
+	appSecret := os.Getenv("TUITUI_BOT_SECRET")
+	client, err := tuitui.NewClient(appID, appSecret, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-	defer signal.Stop(interrupt)
-	go func() {
-		<-interrupt
-		cancel()
-	}()
-	subscription := client.Event.Subscribe(ctx, &tuitui.SubscribeOptions{
-		OnConnected: func() { log.Println("WebSocket 已连接") },
-		OnEvent:     func(event tuitui.RawEvent) { fmt.Printf("%#v\n", event) },
-		OnError:     func(err error) { log.Printf("WebSocket 错误: %v", err) },
+	client.Event.Subscribe(context.Background(), &tuitui.SubscribeOptions{
+		OnConnected: func() {
+			log.Printf("tuitui bot(%s) 已连接websocket，正在监听事件", appID)
+		},
+		OnEvent: func(event tuitui.RawEvent) {
+			body := event["body"].(map[string]interface{})
+			eventName := body["event"].(string)
+			rawJSON, _ := json.MarshalIndent(event, "", "  ")
+			log.Printf("收到事件:%s\n%s", eventName, rawJSON)
+			printMessage(eventName, body, client.Event)
+		},
+		OnError: func(err error) {
+			log.Printf("tuitui websocket: %v", err)
+		},
 	})
-	<-ctx.Done()
-	subscription.Unsubscribe()
+	select {}
+}
+
+func printMessage(eventName string, body map[string]interface{}, eventAPI *tuitui.EventAPI) {
+	switch eventName {
+	case tuitui.EventSingleChat:
+		data := body["data"].(map[string]interface{})
+		log.Printf(
+			"收到单聊消息，来自:%s 解析文本:%s",
+			body["user_account"],
+			eventAPI.RenderMessageBody(data),
+		)
+	case tuitui.EventGroupChat:
+		data := body["data"].(map[string]interface{})
+		log.Printf(
+			"收到群聊(%s)消息，来自:%s 是否@自己:%t 解析文本:%s",
+			body["group_id"],
+			body["user_account"],
+			data["at_me"],
+			eventAPI.RenderMessageBody(data),
+		)
+	case tuitui.EventTeamsPostCreate:
+		data := body["data"].(map[string]interface{})
+		log.Printf(
+			"收到团队(%s)-频道(%s)消息，来自:%s 是否@自己:%t 解析文本:%s",
+			data["team_id"],
+			data["channel_id"],
+			body["user_account"],
+			data["at_me"],
+			data["content"],
+		)
+	}
 }
