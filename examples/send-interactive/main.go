@@ -25,9 +25,9 @@ func main() {
 	response, err := client.IM.SendInteractive(context.Background(), tuitui.SendIMInteractiveOptions{
 		To: target,
 		Interactive: tuitui.InteractiveMessage{
-			"head":   map[string]any{"text": "Go SDK 卡片"},
-			"body":   map[string]any{"content": "请选择"},
-			"action": []any{map[string]any{"text": "确认", "name": "confirm", "value": "confirm"}},
+			"head":   map[string]interface{}{"text": "Go SDK 卡片"},
+			"body":   map[string]interface{}{"content": "请选择"},
+			"action": []interface{}{map[string]interface{}{"text": "确认", "name": "confirm", "value": "confirm"}},
 		},
 	})
 	if err != nil {

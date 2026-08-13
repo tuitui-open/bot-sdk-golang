@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -44,7 +44,7 @@ type preparedUpload struct {
 	contentType string
 }
 
-func (u *uploader) upload(ctx context.Context, source any, options *UploadOptions) (UploadResult, error) {
+func (u *uploader) upload(ctx context.Context, source interface{}, options *UploadOptions) (UploadResult, error) {
 	prepared, err := u.prepare(ctx, source, options)
 	if err != nil {
 		return UploadResult{}, err
@@ -64,7 +64,7 @@ func (u *uploader) upload(ctx context.Context, source any, options *UploadOption
 	return UploadResult{FID: fid, Filename: prepared.filename, FileSize: len(prepared.data), MediaType: mediaType}, nil
 }
 
-func (u *uploader) prepare(ctx context.Context, source any, options *UploadOptions) (preparedUpload, error) {
+func (u *uploader) prepare(ctx context.Context, source interface{}, options *UploadOptions) (preparedUpload, error) {
 	resolved := UploadOptions{}
 	if options != nil {
 		resolved = *options
@@ -91,19 +91,19 @@ func (u *uploader) prepare(ctx context.Context, source any, options *UploadOptio
 			if extension == "" {
 				extension = "bin"
 			}
-			return preparedUpload{data, firstNonEmpty(resolved.Filename, fmt.Sprintf("media_%d.%s", time.Now().UnixMilli(), extension)), firstNonEmpty(resolved.ContentType, contentType)}, nil
+			return preparedUpload{data, firstNonEmpty(resolved.Filename, fmt.Sprintf("media_%d.%s", unixMilli(time.Now()), extension)), firstNonEmpty(resolved.ContentType, contentType)}, nil
 		}
 		if strings.HasPrefix(strings.ToLower(source), "http://") || strings.HasPrefix(strings.ToLower(source), "https://") {
 			return u.prepareRemote(ctx, source, resolved)
 		}
-		data, err := os.ReadFile(source)
+		data, err := ioutil.ReadFile(source)
 		if err != nil {
-			return preparedUpload{}, fmt.Errorf("[tuitui] local file not found: %s: %w", source, err)
+			return preparedUpload{}, wrapError("[tuitui] local file not found: "+source, err)
 		}
 		filename := firstNonEmpty(resolved.Filename, filepath.Base(source))
 		return preparedUpload{data, filename, firstNonEmpty(resolved.ContentType, mimeType(filename))}, nil
 	case io.Reader:
-		data, err := io.ReadAll(io.LimitReader(source, MaxUploadBytes+1))
+		data, err := ioutil.ReadAll(io.LimitReader(source, MaxUploadBytes+1))
 		if err != nil {
 			return preparedUpload{}, err
 		}
@@ -120,23 +120,25 @@ func (u *uploader) prepareRemote(ctx context.Context, source string, options Upl
 	if u.config.fetchWithSSRF != nil {
 		response, err = u.config.fetchWithSSRF(source)
 	} else {
-		req, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+		req, requestErr := http.NewRequest(http.MethodGet, source, nil)
 		if requestErr != nil {
 			return preparedUpload{}, requestErr
 		}
+		req = req.WithContext(ctx)
 		req.Close = true
-		transport := &http.Transport{DisableKeepAlives: true, ForceAttemptHTTP2: false}
+		transport := &http.Transport{DisableKeepAlives: true}
+		disableHTTP2(transport)
 		defer transport.CloseIdleConnections()
 		response, err = (&http.Client{Transport: transport, Timeout: u.config.httpTimeout}).Do(req)
 	}
 	if err != nil {
-		return preparedUpload{}, fmt.Errorf("[tuitui] failed to download %s: %w", source, err)
+		return preparedUpload{}, wrapError("[tuitui] failed to download "+source, err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return preparedUpload{}, fmt.Errorf("[tuitui] failed to download %s: %d", source, response.StatusCode)
 	}
-	data, err := io.ReadAll(io.LimitReader(response.Body, MaxUploadBytes+1))
+	data, err := ioutil.ReadAll(io.LimitReader(response.Body, MaxUploadBytes+1))
 	if err != nil {
 		return preparedUpload{}, err
 	}
@@ -155,7 +157,7 @@ func decodeDataURL(source string) ([]byte, string, error) {
 	if len(parts) > 1 && parts[len(parts)-1] == "base64" {
 		data, err := base64.StdEncoding.DecodeString(payload)
 		if err != nil {
-			return nil, "", fmt.Errorf("[tuitui] invalid base64 data URL: %w", err)
+			return nil, "", wrapError("[tuitui] invalid base64 data URL", err)
 		}
 		return data, contentType, nil
 	}
@@ -208,10 +210,10 @@ func firstNonEmpty(values ...string) string {
 	}
 	return ""
 }
-func generatedFilename() string { return fmt.Sprintf("media_%d", time.Now().UnixMilli()) }
+func generatedFilename() string { return fmt.Sprintf("media_%d", unixMilli(time.Now())) }
 
 type FileAPI struct{ uploader *uploader }
 
-func (f *FileAPI) Upload(ctx context.Context, source any, options *UploadOptions) (UploadResult, error) {
+func (f *FileAPI) Upload(ctx context.Context, source interface{}, options *UploadOptions) (UploadResult, error) {
 	return f.uploader.upload(ctx, source, options)
 }

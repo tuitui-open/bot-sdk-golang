@@ -12,7 +12,7 @@ type SendPostOptions struct{ TeamID, ChannelID, Text, ParentID, Tag string }
 type EditPostOptions struct{ TeamID, ChannelID, PostID, Text, Tag string }
 type SendPostFileOptions struct {
 	TeamID, ChannelID     string
-	Source                any
+	Source                interface{}
 	Text, ParentID        string
 	At                    []string
 	Filename, ContentType string
@@ -21,8 +21,8 @@ type PostEmojiReactionOptions struct {
 	TeamID, ChannelID, PostID, Emoji string
 	Cancel                           bool
 }
-type ChannelInfo map[string]any
-type TeamMember map[string]any
+type ChannelInfo map[string]interface{}
+type TeamMember map[string]interface{}
 type GetPostTopicsOptions struct {
 	TeamID        string `json:"team_id"`
 	ChannelID     string `json:"channel_id"`
@@ -34,7 +34,7 @@ type GetPostTopicsOptions struct {
 }
 type PostChainItem struct {
 	FromUID, PostID, Time, LastReplyTime, Name, Content string
-	Properties                                          any
+	Properties                                          interface{}
 }
 
 type TeamsAPI struct {
@@ -49,7 +49,7 @@ func (t *TeamsAPI) SendPost(ctx context.Context, options SendPostOptions) (APIRe
 	if strings.TrimSpace(options.ChannelID) == "" {
 		return nil, fmt.Errorf("[tuitui] channelID is required")
 	}
-	target := map[string]any{"team_id": options.TeamID, "channel_id": options.ChannelID}
+	target := map[string]interface{}{"team_id": options.TeamID, "channel_id": options.ChannelID}
 	if options.ParentID != "" {
 		target["parent_id"] = options.ParentID
 	}
@@ -66,7 +66,7 @@ func (t *TeamsAPI) EditPost(ctx context.Context, options EditPostOptions) (APIRe
 	if options.TeamID == "" || options.ChannelID == "" || options.PostID == "" {
 		return nil, fmt.Errorf("[tuitui] teamID, channelID, and postID are required")
 	}
-	target := map[string]any{"team_id": options.TeamID, "channel_id": options.ChannelID, "post_id": options.PostID}
+	target := map[string]interface{}{"team_id": options.TeamID, "channel_id": options.ChannelID, "post_id": options.PostID}
 	if options.Tag != "" {
 		tagID, err := t.channelPostTagID(ctx, options.ChannelID, options.Tag)
 		if err != nil {
@@ -76,15 +76,15 @@ func (t *TeamsAPI) EditPost(ctx context.Context, options EditPostOptions) (APIRe
 	}
 	return t.sendMarkdown(ctx, "/message/custom/modify", target, options.Text)
 }
-func (t *TeamsAPI) sendMarkdown(ctx context.Context, endpoint string, target map[string]any, text string) (APIResponse, error) {
+func (t *TeamsAPI) sendMarkdown(ctx context.Context, endpoint string, target map[string]interface{}, text string) (APIResponse, error) {
 	markdown := replaceMentions(text)
 	hasMention := markdown != text
-	payload := map[string]any{"toteams": []any{target}, "msgtype": "richtext/markdown", "richtext": map[string]any{"markdown": markdown, "delims_left": map[bool]string{true: "{{"}[hasMention], "delims_right": map[bool]string{true: "}}"}[hasMention]}}
+	payload := map[string]interface{}{"toteams": []interface{}{target}, "msgtype": "richtext/markdown", "richtext": map[string]interface{}{"markdown": markdown, "delims_left": map[bool]string{true: "{{"}[hasMention], "delims_right": map[bool]string{true: "}}"}[hasMention]}}
 	response, err := t.http.post(ctx, endpoint, payload)
 	if err == nil || !hasMention {
 		return response, err
 	}
-	payload["richtext"] = map[string]any{"markdown": text, "delims_left": "", "delims_right": ""}
+	payload["richtext"] = map[string]interface{}{"markdown": text, "delims_left": "", "delims_right": ""}
 	return t.http.post(ctx, endpoint, payload)
 }
 func (t *TeamsAPI) SendFile(ctx context.Context, options SendPostFileOptions) (APIResponse, error) {
@@ -92,7 +92,7 @@ func (t *TeamsAPI) SendFile(ctx context.Context, options SendPostFileOptions) (A
 	if err != nil {
 		return nil, err
 	}
-	target := map[string]any{"team_id": options.TeamID, "channel_id": options.ChannelID}
+	target := map[string]interface{}{"team_id": options.TeamID, "channel_id": options.ChannelID}
 	if options.ParentID != "" {
 		target["parent_id"] = options.ParentID
 	}
@@ -104,36 +104,36 @@ func (t *TeamsAPI) SendFile(ctx context.Context, options SendPostFileOptions) (A
 	if options.Text != "" {
 		markdown = options.Text + "\n\n" + fileMarkdown
 	}
-	return t.http.post(ctx, "/message/custom/send", map[string]any{"toteams": []any{target}, "msgtype": "richtext/markdown", "at": options.At, "richtext": map[string]any{"markdown": markdown, "delims_left": "{{", "delims_right": "}}"}})
+	return t.http.post(ctx, "/message/custom/send", map[string]interface{}{"toteams": []interface{}{target}, "msgtype": "richtext/markdown", "at": options.At, "richtext": map[string]interface{}{"markdown": markdown, "delims_left": "{{", "delims_right": "}}"}})
 }
 func (t *TeamsAPI) EmojiReaction(ctx context.Context, options PostEmojiReactionOptions) (APIResponse, error) {
-	return t.http.post(ctx, "/message/custom/modify", map[string]any{"toteams": []any{map[string]any{"team_id": options.TeamID, "channel_id": options.ChannelID, "parent_id": "", "post_id": options.PostID}}, "msgtype": "emoji_reaction", "emoji_reaction": map[string]any{"emoji": options.Emoji, "cancel": options.Cancel}})
+	return t.http.post(ctx, "/message/custom/modify", map[string]interface{}{"toteams": []interface{}{map[string]interface{}{"team_id": options.TeamID, "channel_id": options.ChannelID, "parent_id": "", "post_id": options.PostID}}, "msgtype": "emoji_reaction", "emoji_reaction": map[string]interface{}{"emoji": options.Emoji, "cancel": options.Cancel}})
 }
 func (t *TeamsAPI) GetChannelInfo(ctx context.Context, channelID string) (ChannelInfo, error) {
 	if strings.TrimSpace(channelID) == "" {
 		return nil, fmt.Errorf("[tuitui] channelID is required")
 	}
-	body, err := t.http.post(ctx, "/teams/channel/info", map[string]any{"channel_id": channelID})
+	body, err := t.http.post(ctx, "/teams/channel/info", map[string]interface{}{"channel_id": channelID})
 	if err != nil {
 		return nil, err
 	}
-	datas, _ := body["datas"].(map[string]any)
-	info, _ := datas["info"].(map[string]any)
+	datas, _ := body["datas"].(map[string]interface{})
+	info, _ := datas["info"].(map[string]interface{})
 	if stringValue(info["team_id"]) == "" {
 		return nil, &APIError{Message: fmt.Sprintf("/teams/channel/info returned invalid channel info for channel %s: team_id is missing", channelID), Endpoint: "/teams/channel/info", Response: body}
 	}
 	return ChannelInfo(info), nil
 }
-func (t *TeamsAPI) loadChannelPostTags(ctx context.Context, channelID string) ([]map[string]any, error) {
-	body, err := t.http.post(ctx, "/teams/channel/postTag/list", map[string]any{"channel_id": channelID})
+func (t *TeamsAPI) loadChannelPostTags(ctx context.Context, channelID string) ([]map[string]interface{}, error) {
+	body, err := t.http.post(ctx, "/teams/channel/postTag/list", map[string]interface{}{"channel_id": channelID})
 	if err != nil {
 		return nil, err
 	}
-	datas, _ := body["datas"].(map[string]any)
-	raw, _ := datas["tags"].([]any)
-	result := make([]map[string]any, 0, len(raw))
+	datas, _ := body["datas"].(map[string]interface{})
+	raw, _ := datas["tags"].([]interface{})
+	result := make([]map[string]interface{}, 0, len(raw))
 	for _, item := range raw {
-		if value, ok := item.(map[string]any); ok {
+		if value, ok := item.(map[string]interface{}); ok {
 			result = append(result, value)
 		}
 	}
@@ -173,15 +173,15 @@ func (t *TeamsAPI) GetChannelPostTags(ctx context.Context, channelID string) ([]
 	return result, nil
 }
 func (t *TeamsAPI) GetMembers(ctx context.Context, teamID string) ([]TeamMember, error) {
-	body, err := t.http.post(ctx, "/teams/member/list", map[string]any{"team_id": teamID})
+	body, err := t.http.post(ctx, "/teams/member/list", map[string]interface{}{"team_id": teamID})
 	if err != nil {
 		return nil, err
 	}
-	datas, _ := body["datas"].(map[string]any)
-	raw, _ := datas["members"].([]any)
+	datas, _ := body["datas"].(map[string]interface{})
+	raw, _ := datas["members"].([]interface{})
 	result := make([]TeamMember, 0, len(raw))
 	for _, item := range raw {
-		if value, ok := item.(map[string]any); ok {
+		if value, ok := item.(map[string]interface{}); ok {
 			result = append(result, TeamMember(value))
 		}
 	}
@@ -198,7 +198,7 @@ func (t *TeamsAPI) GetMemberNames(ctx context.Context, teamID string) (string, e
 	}
 	return strings.Join(names, "\n"), nil
 }
-func (t *TeamsAPI) GetAnnouncement(ctx context.Context, channelID string) (any, error) {
+func (t *TeamsAPI) GetAnnouncement(ctx context.Context, channelID string) (interface{}, error) {
 	info, err := t.GetChannelInfo(ctx, channelID)
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (t *TeamsAPI) GetAnnouncement(ctx context.Context, channelID string) (any, 
 	return info["announcement"], nil
 }
 func (t *TeamsAPI) GetPostChain(ctx context.Context, teamID, channelID, postID string) (APIResponse, error) {
-	return t.http.post(ctx, "/teams/post/chain", map[string]any{"team_id": teamID, "channel_id": channelID, "post_id": postID})
+	return t.http.post(ctx, "/teams/post/chain", map[string]interface{}{"team_id": teamID, "channel_id": channelID, "post_id": postID})
 }
 func (t *TeamsAPI) GetPostChainForAgent(ctx context.Context, teamID, channelID, postID string) ([]PostChainItem, error) {
 	body, err := t.GetPostChain(ctx, teamID, channelID, postID)
@@ -219,7 +219,7 @@ func (t *TeamsAPI) GetSharedPost(ctx context.Context, shareID string) (APIRespon
 	if strings.TrimSpace(shareID) == "" {
 		return nil, fmt.Errorf("[tuitui] shareID is required")
 	}
-	return t.http.post(ctx, "/teams/share/post", map[string]any{"share_id": shareID})
+	return t.http.post(ctx, "/teams/share/post", map[string]interface{}{"share_id": shareID})
 }
 func (t *TeamsAPI) GetSharedPostForAgent(ctx context.Context, shareID string) (string, error) {
 	body, err := t.GetSharedPost(ctx, shareID)
@@ -251,15 +251,15 @@ func (t *TeamsAPI) GetChannelPosts(ctx context.Context, channelID string, option
 	payload := GetPostTopicsOptions{TeamID: stringValue(info["team_id"]), ChannelID: channelID, Size: pageSize, SortType: "reply", Order: "asc"}
 	if resolved.RelativeTime != "" {
 		if start, end, ok := parseRelativeTime(resolved.RelativeTime, time.Now()); ok {
-			payload.FromTimestamp = start.UnixMilli()
-			payload.EndTimestamp = end.UnixMilli()
+			payload.FromTimestamp = unixMilli(start)
+			payload.EndTimestamp = unixMilli(end)
 		}
 	} else {
 		if value, err := time.Parse(time.RFC3339, resolved.StartTime); err == nil {
-			payload.FromTimestamp = value.UnixMilli()
+			payload.FromTimestamp = unixMilli(value)
 		}
 		if value, err := time.Parse(time.RFC3339, resolved.EndTime); err == nil {
-			payload.EndTimestamp = value.UnixMilli()
+			payload.EndTimestamp = unixMilli(value)
 		}
 	}
 	if resolved.Cursor != "" && resolved.Cursor != "0" {
@@ -269,8 +269,8 @@ func (t *TeamsAPI) GetChannelPosts(ctx context.Context, channelID string, option
 	if err != nil {
 		return nil, err
 	}
-	datas, _ := body["datas"].(map[string]any)
-	posts, _ := datas["post_list"].([]any)
+	datas, _ := body["datas"].(map[string]interface{})
+	posts, _ := datas["post_list"].([]interface{})
 	threads := make([]string, 0, len(posts))
 	lastTimestamp := ""
 	for _, post := range posts {
@@ -291,18 +291,18 @@ func (t *TeamsAPI) GetChannelPosts(ctx context.Context, channelID string, option
 	return APIResponse{"errcode": body["errcode"], "errmsg": body["errmsg"], "cursor": cursor, "has_more": hasMore, "time": body["time"], "subject": fmt.Sprint(info["name"]), "threads": threads}, nil
 }
 
-func compactPostChain(value any) []PostChainItem {
-	item, _ := value.(map[string]any)
-	topic, _ := item["topic"].(map[string]any)
+func compactPostChain(value interface{}) []PostChainItem {
+	item, _ := value.(map[string]interface{})
+	topic, _ := item["topic"].(map[string]interface{})
 	result := []PostChainItem{convertPost(topic, true)}
-	raw, _ := item["reply_list"].([]any)
+	raw, _ := item["reply_list"].([]interface{})
 	for index := len(raw) - 1; index >= 0; index-- {
-		post, _ := raw[index].(map[string]any)
+		post, _ := raw[index].(map[string]interface{})
 		result = append(result, convertPost(post, false))
 	}
 	return result
 }
-func convertPost(post map[string]any, main bool) PostChainItem {
+func convertPost(post map[string]interface{}, main bool) PostChainItem {
 	last := ""
 	if main {
 		last = fmt.Sprint(post["last_reply_time"])

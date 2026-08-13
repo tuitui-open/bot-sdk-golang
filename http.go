@@ -3,9 +3,11 @@ package tuitui
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -14,7 +16,7 @@ import (
 	"time"
 )
 
-type APIResponse map[string]any
+type APIResponse map[string]interface{}
 
 type httpAPI struct{ config resolvedConfig }
 
@@ -22,13 +24,13 @@ func (h *httpAPI) get(ctx context.Context, endpoint string) (APIResponse, error)
 	return h.request(ctx, http.MethodGet, endpoint, nil, "")
 }
 
-func (h *httpAPI) post(ctx context.Context, endpoint string, payload any) (APIResponse, error) {
+func (h *httpAPI) post(ctx context.Context, endpoint string, payload interface{}) (APIResponse, error) {
 	if payload == nil {
-		payload = map[string]any{}
+		payload = map[string]interface{}{}
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("[tuitui] encode %s request: %w", endpoint, err)
+		return nil, wrapError(fmt.Sprintf("[tuitui] encode %s request", endpoint), err)
 	}
 	return h.request(ctx, http.MethodPost, endpoint, bytes.NewReader(body), "application/json")
 }
@@ -60,10 +62,11 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 	query.Set("appid", h.config.appID)
 	query.Set("secret", h.config.appSecret)
 	requestURL.RawQuery = query.Encode()
-	req, err := http.NewRequestWithContext(ctx, method, requestURL.String(), body)
+	req, err := http.NewRequest(method, requestURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	req.Close = true
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
@@ -75,7 +78,7 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 			h.config.logger.Debug(fmt.Sprintf(
 				"[tuitui] %s completed in %dms",
 				endpoint,
-				time.Since(started).Milliseconds(),
+				int64(time.Since(started)/time.Millisecond),
 			))
 		}()
 	}
@@ -85,13 +88,13 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 	transport := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: -1}).DialContext,
-		ForceAttemptHTTP2:     false,
 		DisableKeepAlives:     true,
 		MaxIdleConns:          -1,
 		IdleConnTimeout:       0,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
 	}
+	disableHTTP2(transport)
 	client := &http.Client{Transport: transport, Timeout: h.config.httpTimeout}
 	defer transport.CloseIdleConnections()
 	response, err := client.Do(req)
@@ -99,7 +102,7 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 		return nil, newAPIError(endpoint, "request failed", err)
 	}
 	defer response.Body.Close()
-	raw, err := io.ReadAll(response.Body)
+	raw, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, newAPIError(endpoint, "response read failed", err)
 	}
@@ -124,7 +127,11 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 	return data, nil
 }
 
-func numberAsInt(value any, fallback int) int {
+func disableHTTP2(transport *http.Transport) {
+	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+}
+
+func numberAsInt(value interface{}, fallback int) int {
 	switch value := value.(type) {
 	case float64:
 		return int(value)
@@ -144,7 +151,7 @@ func numberAsInt(value any, fallback int) int {
 	return fallback
 }
 
-func stringValue(value any) string {
+func stringValue(value interface{}) string {
 	if value == nil {
 		return ""
 	}

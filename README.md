@@ -8,7 +8,7 @@
 go get github.com/tuitui-open/bot-sdk-golang
 ```
 
-最低 Go 版本为 1.20。
+最低 Go 版本为 1.12。
 
 ## 发送消息
 

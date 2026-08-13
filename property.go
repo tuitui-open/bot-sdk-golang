@@ -30,38 +30,38 @@ func (p *PropertyAPI) Info(ctx context.Context) (BotInfo, error) {
 }
 
 func (p *PropertyAPI) SetName(ctx context.Context, name string) (APIResponse, error) {
-	return p.http.post(ctx, "/name/modify", map[string]any{"name": name})
+	return p.http.post(ctx, "/name/modify", map[string]interface{}{"name": name})
 }
 func (p *PropertyAPI) SetAvatar(ctx context.Context, avatar string) (APIResponse, error) {
-	return p.http.post(ctx, "/avatar/modify", map[string]any{"avatar": avatar})
+	return p.http.post(ctx, "/avatar/modify", map[string]interface{}{"avatar": avatar})
 }
 func (p *PropertyAPI) SetWebhook(ctx context.Context, value string) (APIResponse, error) {
-	return p.http.post(ctx, "/webhook/modify", map[string]any{"url": value})
+	return p.http.post(ctx, "/webhook/modify", map[string]interface{}{"url": value})
 }
 func (p *PropertyAPI) SetInteractiveURL(ctx context.Context, value string) (APIResponse, error) {
-	return p.http.post(ctx, "/interactive_url/modify", map[string]any{"url": value})
+	return p.http.post(ctx, "/interactive_url/modify", map[string]interface{}{"url": value})
 }
 func (p *PropertyAPI) SetShortcutCommands(ctx context.Context, commands []ShortcutCommand, options *SetShortcutCommandsOptions) (APIResponse, error) {
-	items := make([]map[string]any, 0, len(commands))
+	items := make([]map[string]interface{}, 0, len(commands))
 	for _, command := range commands {
-		items = append(items, map[string]any{"command_name": command.Name, "command_content": command.Content, "command_description": command.Description})
+		items = append(items, map[string]interface{}{"command_name": command.Name, "command_content": command.Content, "command_description": command.Description})
 	}
-	payload := map[string]any{"shortcut_cmds": items}
+	payload := map[string]interface{}{"shortcut_cmds": items}
 	if options != nil && options.NoAt != nil {
 		payload["no_at"] = *options.NoAt
 	}
 	return p.http.post(ctx, "/shortcutCommand/set", payload)
 }
 func (p *PropertyAPI) GetShortcutCommands(ctx context.Context) ([]ShortcutCommand, error) {
-	response, err := p.http.post(ctx, "/shortcutCommand/get", map[string]any{})
+	response, err := p.http.post(ctx, "/shortcutCommand/get", map[string]interface{}{})
 	if err != nil {
 		return nil, err
 	}
-	data, _ := response["datas"].(map[string]any)
-	raw, _ := data["shortcut_cmds"].([]any)
+	data, _ := response["datas"].(map[string]interface{})
+	raw, _ := data["shortcut_cmds"].([]interface{})
 	commands := make([]ShortcutCommand, 0, len(raw))
 	for _, item := range raw {
-		command, _ := item.(map[string]any)
+		command, _ := item.(map[string]interface{})
 		commands = append(commands, ShortcutCommand{Name: stringValue(command["command_name"]), Content: stringValue(command["command_content"]), Description: stringValue(command["command_description"])})
 	}
 	return commands, nil

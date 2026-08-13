@@ -3,7 +3,7 @@ package tuitui
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,12 +11,12 @@ import (
 
 func TestSendTextBuildsGroupPayload(t *testing.T) {
 	t.Parallel()
-	var payload map[string]any
+	var payload map[string]interface{}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/message/custom/send" {
 			t.Fatalf("unexpected path: %s", request.URL.Path)
 		}
-		body, _ := io.ReadAll(request.Body)
+		body, _ := ioutil.ReadAll(request.Body)
 		if err := json.Unmarshal(body, &payload); err != nil {
 			t.Fatal(err)
 		}
@@ -31,8 +31,8 @@ func TestSendTextBuildsGroupPayload(t *testing.T) {
 	if payload["msgtype"] != "text" {
 		t.Fatalf("unexpected payload: %#v", payload)
 	}
-	groups := payload["togroups"].([]any)
-	mentions := payload["at"].([]any)
+	groups := payload["togroups"].([]interface{})
+	mentions := payload["at"].([]interface{})
 	if groups[0] != "group" || mentions[0] != "alice" {
 		t.Fatalf("unexpected target or mentions: %#v", payload)
 	}

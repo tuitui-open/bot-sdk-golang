@@ -1,4 +1,5 @@
 //go:build e2e
+// +build e2e
 
 package e2e
 
@@ -30,8 +31,8 @@ func TestTwoBotRoundtrip(t *testing.T) {
 	subscription := bot1.Event.Subscribe(ctx, &tuitui.SubscribeOptions{
 		OnConnected: func() { connected <- struct{}{} },
 		OnEvent: func(event tuitui.RawEvent) {
-			if body, ok := event["body"].(map[string]any); ok && fmt.Sprint(body["event"]) == tuitui.EventGroupChat {
-				if data, ok := body["data"].(map[string]any); ok && fmt.Sprint(data["text"]) == token {
+			if body, ok := event["body"].(map[string]interface{}); ok && fmt.Sprint(body["event"]) == tuitui.EventGroupChat {
+				if data, ok := body["data"].(map[string]interface{}); ok && fmt.Sprint(data["text"]) == token {
 					select {
 					case received <- struct{}{}:
 					default:

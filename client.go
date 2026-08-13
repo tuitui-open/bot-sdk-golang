@@ -37,7 +37,7 @@ func NewClient(appID, appSecret string, options *ClientOptions) (*Client, error)
 	return client, nil
 }
 
-func (c *Client) Request(ctx context.Context, endpoint string, payload any, options *RequestOptions) (APIResponse, error) {
+func (c *Client) Request(ctx context.Context, endpoint string, payload interface{}, options *RequestOptions) (APIResponse, error) {
 	if options != nil && options.Method == "GET" {
 		return c.http.get(ctx, endpoint)
 	}

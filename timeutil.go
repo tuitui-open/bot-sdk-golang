@@ -69,13 +69,17 @@ func parseRelativeTime(value string, now time.Time) (time.Time, time.Time, bool)
 	return start, end, true
 }
 
-func formatTimestamp(value any) string {
+func formatTimestamp(value interface{}) string {
 	numeric, err := strconv.ParseInt(fmt.Sprint(value), 10, 64)
 	if err != nil || numeric <= 0 {
 		return ""
 	}
-	if numeric < 10_000_000_000 {
+	if numeric < 10000000000 {
 		numeric *= 1000
 	}
-	return time.UnixMilli(numeric).Format("2006-01-02 15:04:05")
+	return time.Unix(numeric/1000, (numeric%1000)*int64(time.Millisecond)).Format("2006-01-02 15:04:05")
+}
+
+func unixMilli(value time.Time) int64 {
+	return value.UnixNano() / int64(time.Millisecond)
 }

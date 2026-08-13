@@ -2,7 +2,6 @@ package dotenv
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +18,7 @@ func LoadClosest() error {
 		if err == nil {
 			return nil
 		}
-		if !errors.Is(err, os.ErrNotExist) {
+		if !os.IsNotExist(err) {
 			return err
 		}
 		parent := filepath.Dir(directory)
@@ -44,9 +43,13 @@ func Load(path string) error {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		name, value, found := strings.Cut(line, "=")
+		separator := strings.IndexByte(line, '=')
+		if separator < 0 {
+			continue
+		}
+		name, value := line[:separator], line[separator+1:]
 		name = strings.TrimSpace(name)
-		if !found || name == "" {
+		if name == "" {
 			continue
 		}
 		if _, exists := os.LookupEnv(name); exists {

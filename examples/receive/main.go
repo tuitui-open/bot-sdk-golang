@@ -23,8 +23,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	defer signal.Stop(interrupt)
+	go func() {
+		<-interrupt
+		cancel()
+	}()
 	subscription := client.Event.Subscribe(ctx, &tuitui.SubscribeOptions{
 		OnConnected: func() { log.Println("WebSocket 已连接") },
 		OnEvent:     func(event tuitui.RawEvent) { fmt.Printf("%#v\n", event) },

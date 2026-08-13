@@ -11,10 +11,10 @@ const ProductionHost = "im.live.360.cn"
 
 // Logger is the optional logging boundary used by the SDK.
 type Logger interface {
-	Debug(message string, context ...any)
-	Info(message string, context ...any)
-	Warn(message string, context ...any)
-	Error(message string, context ...any)
+	Debug(message string, context ...interface{})
+	Info(message string, context ...interface{})
+	Warn(message string, context ...interface{})
+	Error(message string, context ...interface{})
 }
 
 // RemoteFetcher downloads HTTP/HTTPS upload sources.

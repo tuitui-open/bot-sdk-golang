@@ -14,7 +14,7 @@ const (
 	SpaceTypeChannel = "3"
 )
 
-type FileSpaceNode map[string]any
+type FileSpaceNode map[string]interface{}
 type FileSpaceItem struct{ Filename, Author, URL, FileSize string }
 type FileSpaceContext struct{ SpaceID, SpaceType, Source string }
 type AddFileSpaceNodeOptions struct{ SpaceID, SpaceType, NodeType, Name, ParentID, Source, FID string }
@@ -30,15 +30,15 @@ type FileSpaceAPI struct {
 
 func (f *FileSpaceAPI) ListNodes(ctx context.Context, context FileSpaceContext) ([]FileSpaceNode, error) {
 	spaceType := firstNonEmpty(context.SpaceType, SpaceTypeTeam)
-	body, err := f.http.post(ctx, "/file_space/node/list", map[string]any{"space_id": context.SpaceID, "space_type": spaceType})
+	body, err := f.http.post(ctx, "/file_space/node/list", map[string]interface{}{"space_id": context.SpaceID, "space_type": spaceType})
 	if err != nil {
 		return nil, err
 	}
-	datas, _ := body["datas"].(map[string]any)
-	raw, _ := datas["list"].([]any)
+	datas, _ := body["datas"].(map[string]interface{})
+	raw, _ := datas["list"].([]interface{})
 	result := make([]FileSpaceNode, 0, len(raw))
 	for _, item := range raw {
-		if value, ok := item.(map[string]any); ok {
+		if value, ok := item.(map[string]interface{}); ok {
 			result = append(result, FileSpaceNode(value))
 		}
 	}
@@ -52,7 +52,7 @@ func (f *FileSpaceAPI) ListFiles(ctx context.Context, context FileSpaceContext) 
 	return FlattenFileSpaceList(nodes), nil
 }
 func (f *FileSpaceAPI) AddNode(ctx context.Context, options AddFileSpaceNodeOptions) (APIResponse, error) {
-	payload := map[string]any{"space_id": options.SpaceID, "space_type": options.SpaceType, "node_type": options.NodeType, "name": options.Name}
+	payload := map[string]interface{}{"space_id": options.SpaceID, "space_type": options.SpaceType, "node_type": options.NodeType, "name": options.Name}
 	if options.ParentID != "" {
 		payload["parent_id"] = options.ParentID
 	}
@@ -64,7 +64,7 @@ func (f *FileSpaceAPI) AddNode(ctx context.Context, options AddFileSpaceNodeOpti
 	}
 	return f.http.post(ctx, "/file_space/node/add", payload)
 }
-func (f *FileSpaceAPI) AddFile(ctx context.Context, context FileSpaceContext, cloudPath string, source any, options *UploadOptions) (APIResponse, error) {
+func (f *FileSpaceAPI) AddFile(ctx context.Context, context FileSpaceContext, cloudPath string, source interface{}, options *UploadOptions) (APIResponse, error) {
 	parts := strings.FieldsFunc(strings.TrimLeft(cloudPath, "/"), func(r rune) bool { return r == '/' })
 	filename := "unnamed"
 	folders := []string{}
@@ -94,7 +94,7 @@ func (f *FileSpaceAPI) ListTeamFilesByChannel(ctx context.Context, channelID str
 	}
 	return f.ListFiles(ctx, FileSpaceContext{SpaceID: stringValue(info["team_id"]), SpaceType: SpaceTypeTeam})
 }
-func (f *FileSpaceAPI) AddTeamFileByChannel(ctx context.Context, channelID, cloudPath string, source any, options *AddTeamFileOptions) (APIResponse, error) {
+func (f *FileSpaceAPI) AddTeamFileByChannel(ctx context.Context, channelID, cloudPath string, source interface{}, options *AddTeamFileOptions) (APIResponse, error) {
 	info, err := f.teams.GetChannelInfo(ctx, channelID)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (f *FileSpaceAPI) ensureFolders(ctx context.Context, context FileSpaceConte
 			if err != nil {
 				return "", err
 			}
-			datas, _ := result["datas"].(map[string]any)
+			datas, _ := result["datas"].(map[string]interface{})
 			nodeID := firstNonEmpty(stringValue(datas["node_id"]), stringValue(result["node_id"]))
 			if nodeID == "" {
 				return "", fmt.Errorf("[tuitui] failed to create folder %s", name)

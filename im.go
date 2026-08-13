@@ -26,12 +26,12 @@ type Link struct {
 	Content string `json:"content,omitempty"`
 	Image   string `json:"image,omitempty"`
 }
-type InteractiveMessage map[string]any
+type InteractiveMessage map[string]interface{}
 
 type MixedItem struct {
 	Type        string
 	Text        string
-	Source      any
+	Source      interface{}
 	Filename    string
 	ContentType string
 }
@@ -56,7 +56,7 @@ type SendIMLinkOptions struct {
 }
 type SendIMFileOptions struct {
 	To          ToTarget
-	Source      any
+	Source      interface{}
 	At          []string
 	Filename    string
 	ContentType string
@@ -97,7 +97,7 @@ func (i *IMAPI) SendText(ctx context.Context, options SendIMTextOptions) (APIRes
 	if at == nil && group {
 		at = extractMentions(options.Text)
 	}
-	text := map[string]any{"content": options.Text}
+	text := map[string]interface{}{"content": options.Text}
 	if options.ReferenceMessageID != "" {
 		text["reference_msgid"] = options.ReferenceMessageID
 	}
@@ -150,10 +150,10 @@ func (i *IMAPI) SendFile(ctx context.Context, options SendIMFileOptions) (APIRes
 	payload["at"] = options.At
 	if uploaded.MediaType == "image" {
 		payload["msgtype"] = "image"
-		payload["image"] = map[string]any{"media_id": uploaded.FID}
+		payload["image"] = map[string]interface{}{"media_id": uploaded.FID}
 	} else {
 		payload["msgtype"] = "attachment"
-		payload["attachment"] = map[string]any{"media_id": uploaded.FID}
+		payload["attachment"] = map[string]interface{}{"media_id": uploaded.FID}
 	}
 	return i.http.post(ctx, "/message/custom/send", payload)
 }
@@ -172,8 +172,8 @@ func (i *IMAPI) SendInteractive(ctx context.Context, options SendIMInteractiveOp
 		return nil, err
 	}
 	if response["msgid"] == nil {
-		if msgids, ok := response["msgids"].([]any); ok && len(msgids) > 0 {
-			if first, ok := msgids[0].(map[string]any); ok {
+		if msgids, ok := response["msgids"].([]interface{}); ok && len(msgids) > 0 {
+			if first, ok := msgids[0].(map[string]interface{}); ok {
 				response["msgid"] = first["msgid"]
 			}
 		}
@@ -186,7 +186,7 @@ func (i *IMAPI) ModifyText(ctx context.Context, options ModifyIMTextOptions) (AP
 		return nil, err
 	}
 	payload["msgtype"] = "text"
-	payload["text"] = map[string]any{"content": options.Text}
+	payload["text"] = map[string]interface{}{"content": options.Text}
 	if options.WithoutPush != nil {
 		payload["without_push"] = *options.WithoutPush
 	}
@@ -207,7 +207,7 @@ func (i *IMAPI) EmojiReaction(ctx context.Context, options IMEmojiReactionOption
 		return nil, err
 	}
 	payload["msgtype"] = "emoji_reaction"
-	payload["emoji_reaction"] = map[string]any{"emoji": options.Emoji, "cancel": options.Cancel}
+	payload["emoji_reaction"] = map[string]interface{}{"emoji": options.Emoji, "cancel": options.Cancel}
 	return i.http.post(ctx, "/message/custom/modify", payload)
 }
 func (i *IMAPI) GetHistory(ctx context.Context, target ToTarget, options *GetChatRecordOptions) (APIResponse, error) {
@@ -255,18 +255,18 @@ func (i *IMAPI) prepareMixed(ctx context.Context, items []MixedItem) ([]map[stri
 	return result, nil
 }
 
-func imTargetPayload(target ToTarget, at []string) (map[string]any, bool, int, error) {
+func imTargetPayload(target ToTarget, at []string) (map[string]interface{}, bool, int, error) {
 	resolved, err := resolveTarget(target)
 	if err != nil {
 		return nil, false, 0, err
 	}
 	if resolved.kind == "group" {
-		return map[string]any{"togroups": []string{resolved.groupID}}, true, 1, nil
+		return map[string]interface{}{"togroups": []string{resolved.groupID}}, true, 1, nil
 	}
 	if len(at) > 0 {
 		return nil, false, 0, fmt.Errorf("[tuitui] at is only supported for group messages")
 	}
-	payload := map[string]any{}
+	payload := map[string]interface{}{}
 	if len(resolved.accounts) > 0 {
 		payload["tousers"] = resolved.accounts
 	}
@@ -294,7 +294,7 @@ func resolveEditableTarget(target ToTarget) (editableTarget, error) {
 	}
 	return editableTarget{"account", resolved.accounts[0]}, nil
 }
-func editableTargetPayload(target ToTarget, messageID string) (map[string]any, error) {
+func editableTargetPayload(target ToTarget, messageID string) (map[string]interface{}, error) {
 	if strings.TrimSpace(messageID) == "" {
 		return nil, fmt.Errorf("[tuitui] messageID is required")
 	}
@@ -303,9 +303,9 @@ func editableTargetPayload(target ToTarget, messageID string) (map[string]any, e
 		return nil, err
 	}
 	if resolved.kind == "account" {
-		return map[string]any{"tousers": []map[string]string{{"user": resolved.value, "msgid": messageID}}}, nil
+		return map[string]interface{}{"tousers": []map[string]string{{"user": resolved.value, "msgid": messageID}}}, nil
 	}
-	return map[string]any{"togroups": []map[string]string{{"group": resolved.value, "msgid": messageID}}}, nil
+	return map[string]interface{}{"togroups": []map[string]string{{"group": resolved.value, "msgid": messageID}}}, nil
 }
 
 var mentionPattern = regexp.MustCompile(`(?:^|[\s\r\n　、。，！？…])@([^\s]+)`)

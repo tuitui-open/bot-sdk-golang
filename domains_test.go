@@ -12,18 +12,18 @@ func TestPropertyTeamsAndFileSpaceFlows(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
-		responses := map[string]any{
-			"/prop/get":                   map[string]any{"errcode": 0, "robot_name": " Bot ", "robot_uid": 123, "robot_account": " bot@example "},
-			"/shortcutCommand/get":        map[string]any{"errcode": 0, "datas": map[string]any{"shortcut_cmds": []any{map[string]any{"command_name": "help", "command_content": "/help", "command_description": "Help"}}}},
-			"/teams/channel/info":         map[string]any{"errcode": 0, "datas": map[string]any{"info": map[string]any{"team_id": "team", "name": "channel", "announcement": "notice"}}},
-			"/teams/channel/postTag/list": map[string]any{"errcode": 0, "datas": map[string]any{"tags": []any{map[string]any{"tag_id": "tag-1", "name": "News"}}}},
-			"/teams/member/list":          map[string]any{"errcode": 0, "datas": map[string]any{"members": []any{map[string]any{"name": "Alice"}, map[string]any{"name": "Bob"}}}},
-			"/file_space/node/list":       map[string]any{"errcode": 0, "datas": map[string]any{"list": []any{map[string]any{"node_id": "file", "node_type": NodeTypeFile, "name": "a.txt"}}}},
-			"/message/custom/send":        map[string]any{"errcode": 0, "post_id": "post"},
+		responses := map[string]interface{}{
+			"/prop/get":                   map[string]interface{}{"errcode": 0, "robot_name": " Bot ", "robot_uid": 123, "robot_account": " bot@example "},
+			"/shortcutCommand/get":        map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"shortcut_cmds": []interface{}{map[string]interface{}{"command_name": "help", "command_content": "/help", "command_description": "Help"}}}},
+			"/teams/channel/info":         map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"info": map[string]interface{}{"team_id": "team", "name": "channel", "announcement": "notice"}}},
+			"/teams/channel/postTag/list": map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"tags": []interface{}{map[string]interface{}{"tag_id": "tag-1", "name": "News"}}}},
+			"/teams/member/list":          map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"members": []interface{}{map[string]interface{}{"name": "Alice"}, map[string]interface{}{"name": "Bob"}}}},
+			"/file_space/node/list":       map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"list": []interface{}{map[string]interface{}{"node_id": "file", "node_type": NodeTypeFile, "name": "a.txt"}}}},
+			"/message/custom/send":        map[string]interface{}{"errcode": 0, "post_id": "post"},
 		}
 		value, exists := responses[request.URL.Path]
 		if !exists {
-			value = map[string]any{"errcode": 0}
+			value = map[string]interface{}{"errcode": 0}
 		}
 		_ = json.NewEncoder(writer).Encode(value)
 	}))
@@ -70,10 +70,10 @@ func TestUploadAndInteractiveResponse(t *testing.T) {
 			if request.URL.Query().Get("type") != "image" {
 				t.Errorf("unexpected upload type: %s", request.URL.RawQuery)
 			}
-			_ = json.NewEncoder(writer).Encode(map[string]any{"errcode": 0, "media_id": "media"})
+			_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 0, "media_id": "media"})
 			return
 		}
-		_ = json.NewEncoder(writer).Encode(map[string]any{"errcode": 0, "msgids": []any{map[string]any{"msgid": "message"}}})
+		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 0, "msgids": []interface{}{map[string]interface{}{"msgid": "message"}}})
 	}))
 	defer server.Close()
 	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
@@ -82,7 +82,7 @@ func TestUploadAndInteractiveResponse(t *testing.T) {
 	if err != nil || uploaded.FID != "media" || uploaded.MediaType != "image" {
 		t.Fatalf("unexpected upload: %#v, %v", uploaded, err)
 	}
-	response, err := client.IM.SendInteractive(ctx, SendIMInteractiveOptions{To: client.To.Account("alice"), Interactive: InteractiveMessage{"body": map[string]any{"content": "hello"}}})
+	response, err := client.IM.SendInteractive(ctx, SendIMInteractiveOptions{To: client.To.Account("alice"), Interactive: InteractiveMessage{"body": map[string]interface{}{"content": "hello"}}})
 	if err != nil || response["msgid"] != "message" {
 		t.Fatalf("unexpected response: %#v, %v", response, err)
 	}
@@ -90,7 +90,7 @@ func TestUploadAndInteractiveResponse(t *testing.T) {
 
 func TestEventRenderingAndMediaExtraction(t *testing.T) {
 	t.Parallel()
-	data := map[string]any{"msg_type": "mixed", "text": "hello", "images": []any{"https://example/a.png"}, "files": []any{map[string]any{"url": "https://example/a.pdf"}}}
+	data := map[string]interface{}{"msg_type": "mixed", "text": "hello", "images": []interface{}{"https://example/a.png"}, "files": []interface{}{map[string]interface{}{"url": "https://example/a.pdf"}}}
 	if rendered := RenderMessageBody(data); rendered != "hello\n[图片] https://example/a.png" {
 		t.Fatalf("unexpected rendered body: %q", rendered)
 	}

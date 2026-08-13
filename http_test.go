@@ -53,7 +53,7 @@ func TestHTTPRequestsDoNotReuseConnections(t *testing.T) {
 func TestHTTPErrorPreservesBusinessResponse(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		_ = json.NewEncoder(writer).Encode(map[string]any{"errcode": 42, "errmsg": "denied", "trans_id": "tx"})
+		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 42, "errmsg": "denied", "trans_id": "tx"})
 	}))
 	defer server.Close()
 	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})

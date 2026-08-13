@@ -28,7 +28,7 @@ func (r *recordsAPI) history(ctx context.Context, endpoint, key, value string, o
 			resolved.Cursor = "0"
 		}
 	}
-	payload := map[string]any{key: value, "cursor": resolved.Cursor}
+	payload := map[string]interface{}{key: value, "cursor": resolved.Cursor}
 	if resolved.RelativeTime != "" {
 		payload["relative_time"] = resolved.RelativeTime
 	} else {
@@ -54,12 +54,12 @@ func (r *recordsAPI) history(ctx context.Context, endpoint, key, value string, o
 
 func compactChatRecord(value APIResponse) APIResponse {
 	result := APIResponse{"errcode": value["errcode"], "errmsg": value["errmsg"], "cursor": value["cursor"], "has_more": value["has_more"], "current_time": value["time"]}
-	raw, _ := value["msgs"].([]any)
-	messages := make([]any, 0, len(raw))
+	raw, _ := value["msgs"].([]interface{})
+	messages := make([]interface{}, 0, len(raw))
 	for _, item := range raw {
-		message, _ := item.(map[string]any)
-		data, _ := message["data"].(map[string]any)
-		compact := map[string]any{}
+		message, _ := item.(map[string]interface{})
+		data, _ := message["data"].(map[string]interface{})
+		compact := map[string]interface{}{}
 		for key, item := range data {
 			if key != "at" && key != "msgid" && key != "group_id" && key != "group_name" {
 				compact[key] = item

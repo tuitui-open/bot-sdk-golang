@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"strings"
 
 	tuitui "github.com/tuitui-open/bot-sdk-golang"
@@ -12,7 +12,7 @@ import (
 
 func ParseTarget(arguments []string) (tuitui.ToTarget, error) {
 	flags := flag.NewFlagSet("target", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
+	flags.SetOutput(ioutil.Discard)
 	account := flags.String("account", "", "接收者账号")
 	uid := flags.String("uid", "", "接收者 UID")
 	group := flags.String("group", "", "接收群 ID")
@@ -47,7 +47,7 @@ func ParseTarget(arguments []string) (tuitui.ToTarget, error) {
 
 func ParsePostTarget(arguments []string) (string, string, error) {
 	flags := flag.NewFlagSet("post-target", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
+	flags.SetOutput(ioutil.Discard)
 	team := flags.String("team", "", "团队 ID")
 	channel := flags.String("channel", "", "频道 ID")
 	if err := flags.Parse(arguments); err != nil {
@@ -75,9 +75,9 @@ func PrintResponse(message string, response tuitui.APIResponse) {
 }
 
 func targetUsage(err error) error {
-	return fmt.Errorf("%w\n用法: --account <账号> | --uid <UID> | --group <群ID>", err)
+	return fmt.Errorf("%v\n用法: --account <账号> | --uid <UID> | --group <群ID>", err)
 }
 
 func postUsage(err error) error {
-	return fmt.Errorf("%w\n用法: --team <团队ID> --channel <频道ID>", err)
+	return fmt.Errorf("%v\n用法: --team <团队ID> --channel <频道ID>", err)
 }

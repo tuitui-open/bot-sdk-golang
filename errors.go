@@ -10,8 +10,20 @@ type APIError struct {
 	Endpoint string
 	Status   int
 	ErrCode  int
-	Response any
+	Response interface{}
 	Cause    error
+}
+
+type wrappedError struct {
+	message string
+	cause   error
+}
+
+func (e *wrappedError) Error() string { return e.message + ": " + e.cause.Error() }
+func (e *wrappedError) Unwrap() error { return e.cause }
+
+func wrapError(message string, cause error) error {
+	return &wrappedError{message: message, cause: cause}
 }
 
 func (e *APIError) Error() string {
@@ -31,7 +43,7 @@ func newAPIError(endpoint, message string, cause error) *APIError {
 	return &APIError{Endpoint: endpoint, Message: fmt.Sprintf("%s %s", endpoint, message), Cause: cause}
 }
 
-func formatAPIResponse(response any) string {
+func formatAPIResponse(response interface{}) string {
 	if value, ok := response.(string); ok {
 		return value
 	}
