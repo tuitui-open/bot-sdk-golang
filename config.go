@@ -17,15 +17,16 @@ type Logger interface {
 	Error(message string, context ...any)
 }
 
-// RemoteFetcher downloads HTTP/HTTPS upload sources. Callers may enforce their own SSRF policy.
+// RemoteFetcher downloads HTTP/HTTPS upload sources.
 type RemoteFetcher func(url string) (*http.Response, error)
 
 type ClientOptions struct {
 	APIBaseURL       string
 	WebSocketBaseURL string
-	FetchWithSSRF    RemoteFetcher
-	Logger           Logger
-	HTTPTimeout      time.Duration
+	// FetchWithSSRF 下载远程 HTTP/HTTPS 上传源；仅在需要自定义 SSRF 防护时设置，普通 Bot API 请求不使用。
+	FetchWithSSRF RemoteFetcher
+	Logger        Logger
+	HTTPTimeout   time.Duration
 }
 
 type resolvedConfig struct {

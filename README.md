@@ -67,16 +67,6 @@ SDK 不在 `Client` 中保存 `http.Client` 或连接池。每次 HTTP API 调�
 - `client.Event`：WebSocket 订阅、ACK、去重、心跳、重连、事件正文和媒体提取。
 - `client.Request`：调用尚未封装的原始 Bot API。
 
-## 上传远程 URL
+## 示例
 
-远程 URL 只由上传能力访问。生产环境建议通过 `ClientOptions.FetchWithSSRF` 注入带 SSRF 防护的
-下载函数；普通 Bot API 请求不会经过该函数。
-
-## 测试
-
-```
-go test ./...
-go vet ./...
-```
-
-真实环境 E2E 见 `tests/e2e/README.md`。默认测试不会读取真实凭据或访问推推服务。
+设置环境变量 `TUITUI_BOT_APPID` 和 `TUITUI_BOT_SECRET` 后，可直接运行 `examples` 中的示例。完整说明见 [`examples/README.md`](examples/README.md)。
