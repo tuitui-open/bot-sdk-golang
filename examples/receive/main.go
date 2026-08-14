@@ -27,7 +27,7 @@ func main() {
 		OnEvent: func(body tuitui.EventBody) {
 			eventName := body["event"].(string)
 			rawJSON, _ := json.MarshalIndent(body, "", "  ")
-			log.Printf("收到事件:%s\n%s", eventName, rawJSON)
+			log.Printf("%s 收到事件:%s\n%s", body.BotName(), eventName, rawJSON)
 			printMessage(eventName, body, client.Event)
 		},
 		OnError: func(err error) {

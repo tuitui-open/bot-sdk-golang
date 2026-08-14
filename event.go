@@ -31,6 +31,13 @@ const (
 )
 
 type EventBody map[string]interface{}
+
+// BotName 返回接收该事件的机器人名称，始终返回字符串。
+func (body EventBody) BotName() string {
+	name, _ := body["bot_name"].(string)
+	return name
+}
+
 type eventEnvelope struct {
 	EventID string                 `json:"event_id"`
 	Header  map[string]interface{} `json:"header"`
@@ -200,6 +207,8 @@ func (s *Subscription) receive(connection *websocket.Conn) error {
 			s.report(fmt.Errorf("[tuitui] WebSocket event missing body"))
 			continue
 		}
+		botName, _ := event.Header["X-Tuitui-Robot-AppName"].(string)
+		body["bot_name"] = botName
 		if err := s.normalizeMessage(body); err != nil {
 			s.report(err)
 			continue

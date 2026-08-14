@@ -25,8 +25,12 @@ func TestTwoBotRoundtrip(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), e2eTimeoutSeconds*time.Second)
 	defer cancel()
+	identity, err := bot1.Property.Info(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	connected := make(chan struct{}, 1)
-	received := make(chan struct{}, 1)
+	received := make(chan string, 1)
 	token := fmt.Sprintf("go-roundtrip-%d", time.Now().UnixNano())
 	subscription := bot1.Event.Subscribe(ctx, &tuitui.SubscribeOptions{
 		OnConnected: func() { connected <- struct{}{} },
@@ -34,7 +38,7 @@ func TestTwoBotRoundtrip(t *testing.T) {
 			if fmt.Sprint(body["event"]) == tuitui.EventGroupChat {
 				if data, ok := body["data"].(map[string]interface{}); ok && fmt.Sprint(data["text"]) == token {
 					select {
-					case received <- struct{}{}:
+					case received <- body.BotName():
 					default:
 					}
 				}
@@ -51,7 +55,10 @@ func TestTwoBotRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	select {
-	case <-received:
+	case botName := <-received:
+		if botName != identity.Name {
+			t.Fatalf("消息事件机器人名称不正确：%q", botName)
+		}
 	case <-ctx.Done():
 		t.Fatal("message event timeout")
 	}
