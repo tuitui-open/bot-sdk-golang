@@ -44,6 +44,12 @@ type eventEnvelope struct {
 	Body    EventBody              `json:"body"`
 }
 type MessageMedia struct{ MIMEType, URL string }
+
+// DetailedMessageMedia 是保留文件名称和文件标识的消息媒体。
+type DetailedMessageMedia struct{ MIMEType, URL, Name, FileID string }
+
+const normalizedMessageMediaKey = "_tuitui_media"
+
 type SubscribeOptions struct {
 	OnEvent           func(EventBody)
 	OnConnected       func()
@@ -90,7 +96,12 @@ func (e *EventAPI) Subscribe(ctx context.Context, options *SubscribeOptions) *Su
 	return subscription
 }
 func (e *EventAPI) GetMessageMedia(data interface{}) []MessageMedia { return GetMessageMedia(data) }
-func (e *EventAPI) RenderMessageBody(data interface{}) string       { return RenderMessageBody(data) }
+
+// GetDetailedMessageMedia 返回包含名称和文件标识的消息媒体。
+func (e *EventAPI) GetDetailedMessageMedia(data interface{}) []DetailedMessageMedia {
+	return GetDetailedMessageMedia(data)
+}
+func (e *EventAPI) RenderMessageBody(data interface{}) string { return RenderMessageBody(data) }
 
 type Subscription struct {
 	ctx     context.Context
@@ -245,12 +256,13 @@ func (s *Subscription) normalizeSharedPost(message map[string]interface{}) error
 	if message["msg_type"] != "shared_post" {
 		return nil
 	}
-	text, err := s.teams.GetSharedPostForAgent(s.ctx, fmt.Sprint(message["shared_post"]))
+	content, err := s.teams.getSharedPostForAgent(s.ctx, fmt.Sprint(message["shared_post"]))
 	if err != nil {
 		return err
 	}
 	message["msg_type"] = "text"
-	message["text"] = text
+	message["text"] = content.Text
+	appendDetailedMedia(message, content.Media)
 	return nil
 }
 func (s *Subscription) record(id string) bool {
@@ -301,77 +313,213 @@ func (s *Subscription) report(err error) {
 }
 
 func GetMessageMedia(data interface{}) []MessageMedia {
+	detailed := GetDetailedMessageMedia(data)
+	result := make([]MessageMedia, 0, len(detailed))
+	for _, media := range detailed {
+		result = append(result, MessageMedia{MIMEType: media.MIMEType, URL: media.URL})
+	}
+	return result
+}
+
+// GetDetailedMessageMedia 递归提取正文、引用和合并转发中的媒体。
+func GetDetailedMessageMedia(data interface{}) []DetailedMessageMedia {
 	value, ok := data.(map[string]interface{})
 	if !ok {
 		return nil
 	}
-	result := []MessageMedia{}
-	appendURL := func(raw interface{}, mime string) {
-		if text, ok := raw.(string); ok && text != "" {
-			result = append(result, MessageMedia{mime, text})
+	result := []DetailedMessageMedia{}
+	seen := map[string]int{}
+	collectDetailedMedia(value, &result, seen)
+	return result
+}
+
+func collectDetailedMedia(data map[string]interface{}, result *[]DetailedMessageMedia, seen map[string]int) {
+	if media, ok := data[normalizedMessageMediaKey].([]interface{}); ok {
+		for _, item := range media {
+			collectOneDetailedMedia(item, "application/octet-stream", result, seen)
 		}
 	}
-	if images, ok := value["images"].([]interface{}); ok {
+	if images, ok := data["images"].([]interface{}); ok {
 		for _, image := range images {
-			appendURL(image, "image/*")
-		}
-	}
-	appendURL(value["voice"], "audio/*")
-	appendURL(value["video"], "video/*")
-	if file, ok := value["file"].(map[string]interface{}); ok {
-		appendURL(file["url"], "application/octet-stream")
-	}
-	if files, ok := value["files"].([]interface{}); ok {
-		for _, raw := range files {
-			if file, ok := raw.(map[string]interface{}); ok {
-				appendURL(file["url"], "application/octet-stream")
+			if _, ok := image.(string); ok {
+				collectOneDetailedMedia(image, "image/*", result, seen)
 			}
 		}
 	}
-	return result
+	collectOneDetailedMedia(data["voice"], "audio/*", result, seen)
+	collectOneDetailedMedia(data["video"], "video/*", result, seen)
+	collectOneDetailedMedia(data["file"], "application/octet-stream", result, seen)
+	if merged, ok := data["merged"].(map[string]interface{}); ok {
+		if messages, ok := merged["msgs"].([]interface{}); ok {
+			for _, raw := range messages {
+				if message, ok := raw.(map[string]interface{}); ok {
+					collectDetailedMedia(message, result, seen)
+				}
+			}
+		}
+	}
+	if ref, ok := data["ref"].(map[string]interface{}); ok {
+		collectDetailedMedia(ref, result, seen)
+	}
 }
+
+func collectOneDetailedMedia(raw interface{}, mimeType string, result *[]DetailedMessageMedia, seen map[string]int) {
+	media := detailedMedia(raw, mimeType)
+	if media.URL == "" {
+		return
+	}
+	if index, exists := seen[media.URL]; exists {
+		existing := &(*result)[index]
+		existing.MIMEType = firstNonEmpty(existing.MIMEType, media.MIMEType)
+		existing.Name = firstNonEmpty(existing.Name, media.Name)
+		existing.FileID = firstNonEmpty(existing.FileID, media.FileID)
+		return
+	}
+	seen[media.URL] = len(*result)
+	*result = append(*result, media)
+}
+
+func detailedMedia(raw interface{}, defaultMIMEType string) DetailedMessageMedia {
+	if url, ok := raw.(string); ok {
+		return DetailedMessageMedia{MIMEType: defaultMIMEType, URL: url}
+	}
+	value, _ := raw.(map[string]interface{})
+	if value == nil {
+		return DetailedMessageMedia{}
+	}
+	return DetailedMessageMedia{
+		MIMEType: firstNonEmpty(stringValue(value["mime_type"]), defaultMIMEType),
+		URL:      stringValue(value["url"]),
+		Name:     stringValue(value["name"]),
+		FileID:   firstNonEmpty(stringValue(value["file_id"]), stringValue(value["fid"])),
+	}
+}
+
+func appendDetailedMedia(data map[string]interface{}, media []DetailedMessageMedia) {
+	values := make([]interface{}, 0, len(media))
+	for _, item := range media {
+		value := map[string]interface{}{"mime_type": item.MIMEType, "url": item.URL}
+		if item.Name != "" {
+			value["name"] = item.Name
+		}
+		if item.FileID != "" {
+			value["file_id"] = item.FileID
+		}
+		values = append(values, value)
+	}
+	if len(values) > 0 {
+		data[normalizedMessageMediaKey] = values
+	}
+}
+
 func RenderMessageBody(data interface{}) string {
 	value, ok := data.(map[string]interface{})
 	if !ok {
 		return ""
 	}
-	parts := renderBaseMessage(value)
-	if ref, ok := value["ref"].(map[string]interface{}); ok {
-		reference := strings.Join(renderBaseMessage(ref), "\n")
-		if ref["shared_post"] != nil {
-			parts = append(parts, "\n[原始背景信息参考如下]\n "+reference)
-		} else {
-			parts = append(parts, fmt.Sprintf("\n[引用来自 %v (%v) 的消息，内容如下]\n %s", ref["user_name"], ref["user_account"], reference))
-		}
-	}
-	return strings.Join(parts, "\n")
+	return strings.Join(renderMessage(value), "\n")
 }
-func renderBaseMessage(data map[string]interface{}) []string {
-	kind := fmt.Sprint(data["msg_type"])
-	parts := []string{}
-	if (kind == "text" || kind == "mixed") && fmt.Sprint(data["text"]) != "<nil>" {
-		parts = append(parts, fmt.Sprint(data["text"]))
-	}
-	if images, ok := data["images"].([]interface{}); ok && (kind == "mixed" || kind == "image") {
-		for _, image := range images {
-			parts = append(parts, "[图片] "+fmt.Sprint(image))
-		}
-	}
-	if kind == "voice" {
-		parts = append(parts, "[语音] "+fmt.Sprint(data["voice"]))
-	}
-	if kind == "video" {
-		parts = append(parts, "[视频] "+fmt.Sprint(data["video"]))
-	}
-	if kind == "file" {
-		if file, ok := data["file"].(map[string]interface{}); ok {
-			parts = append(parts, fmt.Sprintf("[文件] %v : %v", file["name"], file["url"]))
-		}
-	}
-	if kind == "link" {
-		if link, ok := data["link"].(map[string]interface{}); ok {
-			parts = append(parts, fmt.Sprintf("[网页链接]\n%v\n%v", link["title"], link["url"]))
+
+func renderMessage(data map[string]interface{}) []string {
+	parts := renderBaseMessage(data)
+	if ref, ok := data["ref"].(map[string]interface{}); ok {
+		reference := strings.Join(renderMessage(ref), "\n")
+		if ref["shared_post"] != nil {
+			parts = append(parts, "\n[原始背景信息参考如下]\n"+reference)
+		} else {
+			parts = append(parts, fmt.Sprintf("\n[引用来自 %s 的消息，内容如下]\n%s", renderSender(ref), reference))
 		}
 	}
 	return parts
+}
+
+func renderBaseMessage(data map[string]interface{}) []string {
+	parts := []string{}
+	if text := stringValue(data["text"]); text != "" {
+		parts = append(parts, text)
+	}
+	seen := map[string]int{}
+	appendMediaLine := func(label string, raw interface{}) {
+		line, url := renderMediaLine(label, raw)
+		if line == "" {
+			return
+		}
+		if index, exists := seen[url]; exists {
+			if detailedMedia(raw, "").Name != "" {
+				parts[index] = line
+			}
+			return
+		}
+		seen[url] = len(parts)
+		parts = append(parts, line)
+	}
+	if images, ok := data["images"].([]interface{}); ok {
+		for _, image := range images {
+			if _, ok := image.(string); ok {
+				appendMediaLine("图片", image)
+			}
+		}
+	}
+	for _, item := range []struct {
+		label string
+		value interface{}
+	}{
+		{"语音", data["voice"]},
+		{"视频", data["video"]},
+		{"文件", data["file"]},
+	} {
+		appendMediaLine(item.label, item.value)
+	}
+	if card, ok := data["card"].(map[string]interface{}); ok {
+		parts = append(parts, fmt.Sprintf("[名片]\n姓名: %s\n推推账号: %s", stringValue(card["name"]), stringValue(card["account"])))
+	}
+	if link, ok := data["link"].(map[string]interface{}); ok {
+		parts = append(parts, fmt.Sprintf("[网页链接]\n%s\n%s", stringValue(link["title"]), stringValue(link["url"])))
+	}
+	if merged, ok := data["merged"].(map[string]interface{}); ok {
+		parts = append(parts, renderMergedMessage(merged))
+	}
+	return parts
+}
+
+func renderMediaLine(label string, raw interface{}) (string, string) {
+	media := detailedMedia(raw, "")
+	if media.URL == "" {
+		return "", ""
+	}
+	if media.Name != "" {
+		return fmt.Sprintf("[%s] %s: %s", label, media.Name, media.URL), media.URL
+	}
+	return fmt.Sprintf("[%s] %s", label, media.URL), media.URL
+}
+
+func renderMergedMessage(merged map[string]interface{}) string {
+	source := firstNonEmpty(stringValue(merged["source"]), "聊天记录")
+	lines := []string{fmt.Sprintf("[合并转发：%s]", source)}
+	messages, _ := merged["msgs"].([]interface{})
+	for _, raw := range messages {
+		message, _ := raw.(map[string]interface{})
+		if message == nil {
+			continue
+		}
+		lines = append(lines, "------")
+		if timestamp := formatTimestamp(message["timestamp"]); timestamp != "" {
+			lines = append(lines, "时间: "+timestamp)
+		}
+		lines = append(lines, "发言人: "+renderSender(message), "内容：")
+		lines = append(lines, renderMessage(message)...)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderSender(data map[string]interface{}) string {
+	name := stringValue(data["user_name"])
+	account := stringValue(data["user_account"])
+	if name == "" {
+		return firstNonEmpty(account, "unknown")
+	}
+	if account == "" || account == name {
+		return name
+	}
+	return fmt.Sprintf("%s (%s)", name, account)
 }

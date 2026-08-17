@@ -90,8 +90,8 @@ func TestUploadAndInteractiveResponse(t *testing.T) {
 
 func TestEventRenderingAndMediaExtraction(t *testing.T) {
 	t.Parallel()
-	data := map[string]interface{}{"msg_type": "mixed", "text": "hello", "images": []interface{}{"https://example/a.png"}, "files": []interface{}{map[string]interface{}{"url": "https://example/a.pdf"}}}
-	if rendered := RenderMessageBody(data); rendered != "hello\n[图片] https://example/a.png" {
+	data := map[string]interface{}{"msg_type": "mixed", "text": "hello", "images": []interface{}{"https://example/a.png"}, "file": map[string]interface{}{"url": "https://example/a.pdf"}}
+	if rendered := RenderMessageBody(data); rendered != "hello\n[图片] https://example/a.png\n[文件] https://example/a.pdf" {
 		t.Fatalf("unexpected rendered body: %q", rendered)
 	}
 	media := GetMessageMedia(data)

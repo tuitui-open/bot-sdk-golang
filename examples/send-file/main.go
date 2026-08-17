@@ -26,7 +26,8 @@ func main() {
 		To: target, Source: "examples/README.md",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("文件发送失败: %v", err)
+	} else {
+		sample.PrintResponse("文件发送成功", response)
 	}
-	sample.PrintResponse("文件发送成功", response)
 }

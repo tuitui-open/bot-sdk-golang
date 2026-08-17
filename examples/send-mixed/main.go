@@ -31,7 +31,8 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Mixed 消息发送失败: %v", err)
+	} else {
+		sample.PrintResponse("Mixed 消息发送成功", response)
 	}
-	sample.PrintResponse("Mixed 消息发送成功", response)
 }

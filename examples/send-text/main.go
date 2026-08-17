@@ -31,7 +31,8 @@ func main() {
 		Text: "**来自 Go SDK 的消息**",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("消息发送失败: %v", err)
+	} else {
+		sample.PrintResponse("消息发送成功", response)
 	}
-	sample.PrintResponse("消息发送成功", response)
 }

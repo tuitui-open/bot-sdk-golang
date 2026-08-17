@@ -70,14 +70,27 @@ func parseRelativeTime(value string, now time.Time) (time.Time, time.Time, bool)
 }
 
 func formatTimestamp(value interface{}) string {
-	numeric, err := strconv.ParseInt(fmt.Sprint(value), 10, 64)
-	if err != nil || numeric <= 0 {
+	var numeric int64
+	switch value := value.(type) {
+	case float64:
+		numeric = int64(value)
+	default:
+		numeric, _ = strconv.ParseInt(fmt.Sprint(value), 10, 64)
+	}
+	if numeric <= 0 {
 		return ""
 	}
 	if numeric < 10000000000 {
 		numeric *= 1000
 	}
 	return time.Unix(numeric/1000, (numeric%1000)*int64(time.Millisecond)).Format("2006-01-02 15:04:05")
+}
+
+func timestampString(value interface{}) string {
+	if numeric, ok := value.(float64); ok {
+		return strconv.FormatInt(int64(numeric), 10)
+	}
+	return fmt.Sprint(value)
 }
 
 func unixMilli(value time.Time) int64 {

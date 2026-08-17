@@ -26,7 +26,8 @@ func main() {
 		TeamID: teamID, ChannelID: channelID, Text: "**来自 Go SDK 的帖子**",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("频道帖子发送失败: %v", err)
+	} else {
+		sample.PrintResponse("频道帖子发送成功", response)
 	}
-	sample.PrintResponse("频道帖子发送成功", response)
 }

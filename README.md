@@ -32,12 +32,14 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    _, err = client.IM.SendText(context.Background(), tuitui.SendIMTextOptions{
+    response, err := client.IM.SendText(context.Background(), tuitui.SendIMTextOptions{
         To:   client.To.Account("接收账号"),
         Text: "**Hello from Go**",
     })
     if err != nil {
-        log.Fatal(err)
+        log.Printf("消息发送失败: %v", err)
+    } else {
+        log.Printf("消息发送成功: %#v", response)
     }
 }
 ```

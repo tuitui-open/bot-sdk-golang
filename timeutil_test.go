@@ -26,4 +26,7 @@ func TestFormatTimestamp(t *testing.T) {
 	if value := formatTimestamp("1723420800"); value == "" {
 		t.Fatal("valid timestamp must be formatted")
 	}
+	if value := formatTimestamp(float64(1723420800000)); value == "" {
+		t.Fatal("JSON 数字时间戳应能格式化")
+	}
 }

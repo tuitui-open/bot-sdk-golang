@@ -222,11 +222,22 @@ func (t *TeamsAPI) GetSharedPost(ctx context.Context, shareID string) (APIRespon
 	return t.http.post(ctx, "/teams/share/post", map[string]interface{}{"share_id": shareID})
 }
 func (t *TeamsAPI) GetSharedPostForAgent(ctx context.Context, shareID string) (string, error) {
+	content, err := t.getSharedPostForAgent(ctx, shareID)
+	return content.Text, err
+}
+
+type sharedPostAgentContent struct {
+	Text  string
+	Media []DetailedMessageMedia
+}
+
+func (t *TeamsAPI) getSharedPostForAgent(ctx context.Context, shareID string) (sharedPostAgentContent, error) {
 	body, err := t.GetSharedPost(ctx, shareID)
 	if err != nil {
-		return "", err
+		return sharedPostAgentContent{}, err
 	}
-	return postChainText(compactPostChain(body["datas"])), nil
+	posts := compactPostChain(body["datas"])
+	return sharedPostAgentContent{Text: postChainText(posts), Media: postChainMedia(posts)}, nil
 }
 func (t *TeamsAPI) GetPostTopics(ctx context.Context, options GetPostTopicsOptions) (APIResponse, error) {
 	return t.http.post(ctx, "/teams/post/topic/list", options)
@@ -305,9 +316,9 @@ func compactPostChain(value interface{}) []PostChainItem {
 func convertPost(post map[string]interface{}, main bool) PostChainItem {
 	last := ""
 	if main {
-		last = fmt.Sprint(post["last_reply_time"])
+		last = timestampString(post["last_reply_time"])
 	}
-	return PostChainItem{FromUID: fmt.Sprint(post["from_uid"]), PostID: fmt.Sprint(post["post_id"]), Time: fmt.Sprint(post["create_time"]), LastReplyTime: last, Name: fmt.Sprint(post["from_name"]), Content: fmt.Sprint(post["content"]), Properties: post["properties"]}
+	return PostChainItem{FromUID: fmt.Sprint(post["from_uid"]), PostID: fmt.Sprint(post["post_id"]), Time: timestampString(post["create_time"]), LastReplyTime: last, Name: fmt.Sprint(post["from_name"]), Content: fmt.Sprint(post["content"]), Properties: post["properties"]}
 }
 func postChainText(posts []PostChainItem) string {
 	lines := []string{"以下为一个独立的帖子讨论串，包含主贴和回帖"}
@@ -316,9 +327,78 @@ func postChainText(posts []PostChainItem) string {
 		if index == 0 {
 			kind = "[讨论主贴]"
 		}
-		lines = append(lines, kind, "发言人: "+post.Name, "时间: "+formatTimestamp(post.Time), "内容: "+post.Content, "")
+		content := removePostMediaPlaceholders(post.Content, post.Properties)
+		lines = append(lines, kind, "发言人: "+post.Name, "时间: "+formatTimestamp(post.Time), "内容: "+content)
+		lines = append(lines, renderPostProperties(post.Properties)...)
+		lines = append(lines, "")
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+func removePostMediaPlaceholders(content string, rawProperties interface{}) string {
+	properties, _ := rawProperties.(map[string]interface{})
+	if properties == nil {
+		return content
+	}
+	images, _ := properties["images"].([]interface{})
+	files, _ := properties["files"].([]interface{})
+	remove := map[string]bool{
+		"[图片]": len(images) > 0,
+		"[文件]": len(files) > 0,
+	}
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if remove[strings.TrimSpace(line)] {
+			continue
+		}
+		result = append(result, line)
+	}
+	return strings.TrimSpace(strings.Join(result, "\n"))
+}
+func renderPostProperties(raw interface{}) []string {
+	properties, _ := raw.(map[string]interface{})
+	if properties == nil {
+		return nil
+	}
+	lines := []string{}
+	for _, property := range []struct {
+		label string
+		items interface{}
+	}{
+		{"文件", properties["files"]},
+		{"图片", properties["images"]},
+	} {
+		items, _ := property.items.([]interface{})
+		for _, item := range items {
+			if line, _ := renderMediaLine(property.label, item); line != "" {
+				lines = append(lines, line)
+			}
+		}
+	}
+	return lines
+}
+func postChainMedia(posts []PostChainItem) []DetailedMessageMedia {
+	result := []DetailedMessageMedia{}
+	seen := map[string]int{}
+	for _, post := range posts {
+		properties, _ := post.Properties.(map[string]interface{})
+		if properties == nil {
+			continue
+		}
+		for _, property := range []struct {
+			items    interface{}
+			mimeType string
+		}{
+			{properties["images"], "image/*"},
+			{properties["files"], "application/octet-stream"},
+		} {
+			items, _ := property.items.([]interface{})
+			for _, item := range items {
+				collectOneDetailedMedia(item, property.mimeType, &result, seen)
+			}
+		}
+	}
+	return result
 }
 func replaceMentions(text string) string {
 	return mentionPattern.ReplaceAllStringFunc(text, func(match string) string {

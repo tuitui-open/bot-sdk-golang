@@ -31,7 +31,8 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("交互消息发送失败: %v", err)
+	} else {
+		sample.PrintResponse("交互消息发送成功", response)
 	}
-	sample.PrintResponse("交互消息发送成功", response)
 }
