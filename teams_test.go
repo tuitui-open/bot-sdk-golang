@@ -86,3 +86,36 @@ func Test共享帖子按时间顺序输出正文和媒体(t *testing.T) {
 		t.Fatalf("共享帖子媒体顺序或元数据错误：%#v", media)
 	}
 }
+
+func TestSendPost发送引用回帖字段(t *testing.T) {
+	t.Parallel()
+	var payload map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/message/custom/send" {
+			t.Fatalf("请求路径错误：%s", request.URL.Path)
+		}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 0})
+	}))
+	defer server.Close()
+	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Teams.SendPost(context.Background(), SendPostOptions{
+		TeamID:    "team",
+		ChannelID: "channel",
+		Text:      "reply",
+		ParentID:  "parent",
+		RefPostID: "quoted-reply",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := payload["toteams"].([]interface{})[0].(map[string]interface{})
+	if target["parent_id"] != "parent" || target["ref_post_id"] != "quoted-reply" {
+		t.Fatalf("团队回帖目标错误：%#v", target)
+	}
+}

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type SendPostOptions struct{ TeamID, ChannelID, Text, ParentID, Tag string }
+type SendPostOptions struct{ TeamID, ChannelID, Text, ParentID, RefPostID, Tag string }
 type EditPostOptions struct{ TeamID, ChannelID, PostID, Text, Tag string }
 type SendPostFileOptions struct {
 	TeamID, ChannelID     string
@@ -52,6 +52,9 @@ func (t *TeamsAPI) SendPost(ctx context.Context, options SendPostOptions) (APIRe
 	target := map[string]interface{}{"team_id": options.TeamID, "channel_id": options.ChannelID}
 	if options.ParentID != "" {
 		target["parent_id"] = options.ParentID
+	}
+	if options.RefPostID != "" {
+		target["ref_post_id"] = options.RefPostID
 	}
 	if options.Tag != "" {
 		tagID, err := t.channelPostTagID(ctx, options.ChannelID, options.Tag)

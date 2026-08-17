@@ -23,9 +23,9 @@ func TestProperty设置并读取带Tag的快捷指令(t *testing.T) {
 	now := time.Now()
 	readableTime := now.Format("2006-01-02 15:04:05")
 	command := tuitui.ShortcutCommand{
-		Name:        fmt.Sprintf("sdk-%s", now.Format("20060102-150405")),
-		Content:     fmt.Sprintf("/sdk %s", readableTime),
-		Description: fmt.Sprintf("SDK E2E %s", readableTime),
+		Name:        fmt.Sprintf("golang-sdk-%s", now.Format("20060102-150405")),
+		Content:     fmt.Sprintf("/golang-sdk %s", readableTime),
+		Description: fmt.Sprintf("Go SDK E2E %s", readableTime),
 		Tag:         "golang",
 	}
 	noAt := false
