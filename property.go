@@ -15,6 +15,7 @@ type ShortcutCommand struct {
 	Name        string
 	Content     string
 	Description string
+	Tag         string
 }
 
 type SetShortcutCommandsOptions struct{ NoAt *bool }
@@ -44,7 +45,12 @@ func (p *PropertyAPI) SetInteractiveURL(ctx context.Context, value string) (APIR
 func (p *PropertyAPI) SetShortcutCommands(ctx context.Context, commands []ShortcutCommand, options *SetShortcutCommandsOptions) (APIResponse, error) {
 	items := make([]map[string]interface{}, 0, len(commands))
 	for _, command := range commands {
-		items = append(items, map[string]interface{}{"command_name": command.Name, "command_content": command.Content, "command_description": command.Description})
+		items = append(items, map[string]interface{}{
+			"command_name":        command.Name,
+			"command_content":     command.Content,
+			"command_description": command.Description,
+			"tag":                 command.Tag,
+		})
 	}
 	payload := map[string]interface{}{"shortcut_cmds": items}
 	if options != nil && options.NoAt != nil {
@@ -62,7 +68,12 @@ func (p *PropertyAPI) GetShortcutCommands(ctx context.Context) ([]ShortcutComman
 	commands := make([]ShortcutCommand, 0, len(raw))
 	for _, item := range raw {
 		command, _ := item.(map[string]interface{})
-		commands = append(commands, ShortcutCommand{Name: stringValue(command["command_name"]), Content: stringValue(command["command_content"]), Description: stringValue(command["command_description"])})
+		commands = append(commands, ShortcutCommand{
+			Name:        command["command_name"].(string),
+			Content:     command["command_content"].(string),
+			Description: command["command_description"].(string),
+			Tag:         command["tag"].(string),
+		})
 	}
 	return commands, nil
 }

@@ -14,7 +14,7 @@ func TestPropertyTeamsAndFileSpaceFlows(t *testing.T) {
 		writer.Header().Set("Content-Type", "application/json")
 		responses := map[string]interface{}{
 			"/prop/get":                   map[string]interface{}{"errcode": 0, "robot_name": " Bot ", "robot_uid": 123, "robot_account": " bot@example "},
-			"/shortcutCommand/get":        map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"shortcut_cmds": []interface{}{map[string]interface{}{"command_name": "help", "command_content": "/help", "command_description": "Help"}}}},
+			"/shortcutCommand/get":        map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"shortcut_cmds": []interface{}{map[string]interface{}{"command_name": "help", "command_content": "/help", "command_description": "Help", "tag": "golang"}}}},
 			"/teams/channel/info":         map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"info": map[string]interface{}{"team_id": "team", "name": "channel", "announcement": "notice"}}},
 			"/teams/channel/postTag/list": map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"tags": []interface{}{map[string]interface{}{"tag_id": "tag-1", "name": "News"}}}},
 			"/teams/member/list":          map[string]interface{}{"errcode": 0, "datas": map[string]interface{}{"members": []interface{}{map[string]interface{}{"name": "Alice"}, map[string]interface{}{"name": "Bob"}}}},
@@ -35,7 +35,7 @@ func TestPropertyTeamsAndFileSpaceFlows(t *testing.T) {
 		t.Fatalf("unexpected bot info: %#v, %v", info, err)
 	}
 	commands, err := client.Property.GetShortcutCommands(ctx)
-	if err != nil || len(commands) != 1 || commands[0].Name != "help" {
+	if err != nil || len(commands) != 1 || commands[0].Name != "help" || commands[0].Tag != "golang" {
 		t.Fatalf("unexpected commands: %#v, %v", commands, err)
 	}
 	channel, err := client.Teams.GetChannelInfo(ctx, "channel")
