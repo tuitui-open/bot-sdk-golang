@@ -3,13 +3,11 @@ package tuitui
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -67,7 +65,6 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 		return nil, err
 	}
 	req = req.WithContext(ctx)
-	req.Close = true
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
@@ -83,18 +80,9 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 		}()
 	}
 
-	// HTTP API calls deliberately use a fresh transport and client. Keep-alive is disabled,
-	// so no connection pool or connection reuse survives a request.
-	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: -1}).DialContext,
-		DisableKeepAlives:     true,
-		MaxIdleConns:          -1,
-		IdleConnTimeout:       0,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	}
-	disableHTTP2(transport)
+	// SDK 绝大多数场景为低频调用。为简化资源生命周期，每次请求使用独立的
+	// Transport 和 Client，不在请求之间共享连接池。
+	transport := &http.Transport{}
 	client := &http.Client{Transport: transport, Timeout: h.config.httpTimeout}
 	defer transport.CloseIdleConnections()
 	response, err := client.Do(req)
@@ -125,10 +113,6 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 		return nil, &APIError{Message: fmt.Sprintf("%s failed with errcode %v: %s", endpoint, data["errcode"], detail), Endpoint: endpoint, ErrCode: errCode, Response: data}
 	}
 	return data, nil
-}
-
-func disableHTTP2(transport *http.Transport) {
-	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
 }
 
 func numberAsInt(value interface{}, fallback int) int {

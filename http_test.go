@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestHTTPRequestsDoNotReuseConnections(t *testing.T) {
+func TestHTTPRequestsUseIndependentTransports(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
 	connections := map[net.Conn]struct{}{}
@@ -18,8 +18,8 @@ func TestHTTPRequestsDoNotReuseConnections(t *testing.T) {
 		if request.URL.Query().Get("appid") != "app" || request.URL.Query().Get("secret") != "secret" {
 			t.Fatalf("credentials missing from query: %s", request.URL.RawQuery)
 		}
-		if !request.Close {
-			t.Error("request must explicitly close the connection")
+		if request.Close {
+			t.Error("请求不应强制关闭连接")
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		_, _ = writer.Write([]byte(`{"errcode":0}`))
@@ -46,7 +46,7 @@ func TestHTTPRequestsDoNotReuseConnections(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	if len(connections) != 2 {
-		t.Fatalf("expected two independent HTTP connections, got %d", len(connections))
+		t.Fatalf("两次请求应使用独立连接，实际连接数：%d", len(connections))
 	}
 }
 

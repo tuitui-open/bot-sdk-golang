@@ -45,18 +45,6 @@ func main() {
 所有网络方法都接收 `context.Context`。服务端非零 `errcode`、非 2xx 响应、无效 JSON 和网络错误
 统一返回 `*tuitui.APIError`。
 
-## HTTP 生命周期
-
-SDK 不在 `Client` 中保存 `http.Client` 或连接池。每次 HTTP API 调用都会创建独立的
-`http.Transport` 和 `http.Client`，并同时设置：
-
-- `DisableKeepAlives: true`
-- `ForceAttemptHTTP2: false`
-- `Request.Close: true`
-
-请求结束后立即关闭空闲连接，因此普通 HTTP API 不会复用连接。事件订阅使用独立 WebSocket，
-只在订阅生命周期内保持连接。
-
 ## 主要领域
 
 - `client.IM`：文本、图文混排、页面、链接、文件、交互卡片、编辑、表情回复和聊天记录。

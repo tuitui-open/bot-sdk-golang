@@ -125,9 +125,7 @@ func (u *uploader) prepareRemote(ctx context.Context, source string, options Upl
 			return preparedUpload{}, requestErr
 		}
 		req = req.WithContext(ctx)
-		req.Close = true
-		transport := &http.Transport{DisableKeepAlives: true}
-		disableHTTP2(transport)
+		transport := &http.Transport{}
 		defer transport.CloseIdleConnections()
 		response, err = (&http.Client{Transport: transport, Timeout: u.config.httpTimeout}).Do(req)
 	}
