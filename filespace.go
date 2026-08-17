@@ -18,6 +18,7 @@ type FileSpaceNode map[string]interface{}
 type FileSpaceItem struct{ Filename, Author, URL, FileSize string }
 type FileSpaceContext struct{ SpaceID, SpaceType, Source string }
 type AddFileSpaceNodeOptions struct{ SpaceID, SpaceType, NodeType, Name, ParentID, Source, FID string }
+type DeleteFileSpaceNodeOptions struct{ SpaceID, SpaceType, NodeID string }
 type AddTeamFileOptions struct {
 	UploadOptions
 	SourcePostID string
@@ -63,6 +64,13 @@ func (f *FileSpaceAPI) AddNode(ctx context.Context, options AddFileSpaceNodeOpti
 		payload["fid"] = options.FID
 	}
 	return f.http.post(ctx, "/file_space/node/add", payload)
+}
+func (f *FileSpaceAPI) DeleteNode(ctx context.Context, options DeleteFileSpaceNodeOptions) (APIResponse, error) {
+	return f.http.post(ctx, "/file_space/node/delete", map[string]interface{}{
+		"space_id":   options.SpaceID,
+		"space_type": options.SpaceType,
+		"node_id":    options.NodeID,
+	})
 }
 func (f *FileSpaceAPI) AddFile(ctx context.Context, context FileSpaceContext, cloudPath string, source interface{}, options *UploadOptions) (APIResponse, error) {
 	parts := strings.FieldsFunc(strings.TrimLeft(cloudPath, "/"), func(r rune) bool { return r == '/' })
