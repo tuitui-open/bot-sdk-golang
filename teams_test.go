@@ -47,10 +47,7 @@ func Test共享帖子按时间顺序输出正文和媒体(t *testing.T) {
 		})
 	}))
 	defer server.Close()
-	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 
 	text, err := client.Teams.GetSharedPostForAgent(context.Background(), "share")
 	if err != nil {
@@ -100,11 +97,8 @@ func TestSendPost发送引用回帖字段(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 0})
 	}))
 	defer server.Close()
-	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.Teams.SendPost(context.Background(), SendPostOptions{
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	_, err := client.Teams.SendPost(context.Background(), SendPostOptions{
 		TeamID:    "team",
 		ChannelID: "channel",
 		Text:      "reply",

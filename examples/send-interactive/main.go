@@ -18,10 +18,7 @@ func main() {
 	if err := dotenv.LoadClosest(); err != nil {
 		log.Fatal(err)
 	}
-	client, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 	response, err := client.IM.SendInteractive(context.Background(), tuitui.SendIMInteractiveOptions{
 		To: target,
 		Interactive: tuitui.InteractiveMessage{

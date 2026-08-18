@@ -15,10 +15,7 @@ import (
 
 func TestProperty设置并读取带Tag的快捷指令(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET")
-	client, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 
 	now := time.Now()
 	readableTime := now.Format("2006-01-02 15:04:05")

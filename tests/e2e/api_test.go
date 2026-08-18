@@ -19,10 +19,7 @@ const imageDataURL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYA
 
 func TestPropertyAndIM(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET", "TARGET_ACCOUNT", "TARGET_GROUP")
-	client, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if _, err := client.Property.Info(ctx); err != nil {
@@ -39,10 +36,7 @@ func TestPropertyAndIM(t *testing.T) {
 
 func TestTeamsAndFileSpace(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET", "TARGET_TEAM", "TARGET_CHANNEL")
-	client, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	runID := fmt.Sprintf("go-teams-%d", time.Now().UnixNano())
@@ -68,10 +62,7 @@ func TestTeamsAndFileSpace(t *testing.T) {
 
 func TestTeams发送频道图片和文件(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET", "TARGET_TEAM", "TARGET_CHANNEL")
-	client, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	teamID := os.Getenv("TARGET_TEAM")

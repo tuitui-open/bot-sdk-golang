@@ -17,11 +17,8 @@ type Client struct {
 	Property  *PropertyAPI
 }
 
-func NewClient(appID, appSecret string, options *ClientOptions) (*Client, error) {
-	config, err := resolveConfig(appID, appSecret, options)
-	if err != nil {
-		return nil, err
-	}
+func NewClient(appID, appSecret string, options *ClientOptions) *Client {
+	config := resolveConfig(appID, appSecret, options)
 	httpClient := &httpAPI{config: config}
 	uploader := &uploader{http: httpClient, config: config}
 	records := &recordsAPI{http: httpClient}
@@ -34,7 +31,7 @@ func NewClient(appID, appSecret string, options *ClientOptions) (*Client, error)
 	client.FileSpace = &FileSpaceAPI{http: httpClient, uploader: uploader, teams: teams}
 	client.Event = &EventAPI{config: config, teams: teams}
 	client.Property = &PropertyAPI{http: httpClient}
-	return client, nil
+	return client
 }
 
 func (c *Client) Request(ctx context.Context, endpoint string, payload interface{}, options *RequestOptions) (APIResponse, error) {

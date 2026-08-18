@@ -34,10 +34,7 @@ func TestHTTPRequestsUseIndependentTransports(t *testing.T) {
 	server.Start()
 	defer server.Close()
 
-	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	for index := 0; index < 2; index++ {
 		if _, err := client.Request(context.Background(), "/ping", nil, nil); err != nil {
 			t.Fatal(err)
@@ -56,7 +53,7 @@ func TestHTTPErrorPreservesBusinessResponse(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 42, "errmsg": "denied", "trans_id": "tx"})
 	}))
 	defer server.Close()
-	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	_, err := client.Request(context.Background(), "/failure", nil, nil)
 	apiError, ok := err.(*APIError)
 	if !ok || apiError.ErrCode != 42 || apiError.Response == nil {
@@ -96,7 +93,7 @@ func TestHTTPAndDecodeErrorsIncludeResponseBody(t *testing.T) {
 				_, _ = writer.Write([]byte(test.body))
 			}))
 			defer server.Close()
-			client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+			client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 			_, err := client.Request(context.Background(), "/failure", nil, nil)
 			if err == nil || err.Error() != test.wantMessage {
 				t.Fatalf("unexpected error text:\nwant: %s\n got: %v", test.wantMessage, err)

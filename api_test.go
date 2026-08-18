@@ -9,6 +9,13 @@ import (
 	"testing"
 )
 
+func TestNewClient允许空凭证(t *testing.T) {
+	client := NewClient("", "", nil)
+	if client.config.appID != "" || client.config.appSecret != "" {
+		t.Fatalf("客户端未保留空凭证：%#v", client.config)
+	}
+}
+
 func TestSendTextBuildsGroupPayload(t *testing.T) {
 	t.Parallel()
 	var payload map[string]interface{}
@@ -23,7 +30,7 @@ func TestSendTextBuildsGroupPayload(t *testing.T) {
 		_, _ = writer.Write([]byte(`{"errcode":0}`))
 	}))
 	defer server.Close()
-	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	_, err := client.IM.SendText(context.Background(), SendIMTextOptions{To: client.To.Group("group"), Text: "hello @alice"})
 	if err != nil {
 		t.Fatal(err)

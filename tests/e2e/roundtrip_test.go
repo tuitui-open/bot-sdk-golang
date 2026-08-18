@@ -15,14 +15,8 @@ import (
 
 func TestTwoBotRoundtrip(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET", "TUITUI_BOT2_APPID", "TUITUI_BOT2_SECRET", "TARGET_GROUP")
-	bot1, err := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	bot2, err := tuitui.NewClient(os.Getenv("TUITUI_BOT2_APPID"), os.Getenv("TUITUI_BOT2_SECRET"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	bot1 := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
+	bot2 := tuitui.NewClient(os.Getenv("TUITUI_BOT2_APPID"), os.Getenv("TUITUI_BOT2_SECRET"), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), e2eTimeoutSeconds*time.Second)
 	defer cancel()
 	identity, err := bot1.Property.Info(ctx)

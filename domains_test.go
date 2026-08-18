@@ -28,7 +28,7 @@ func TestPropertyTeamsAndFileSpaceFlows(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(value)
 	}))
 	defer server.Close()
-	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	ctx := context.Background()
 	info, err := client.Property.Info(ctx)
 	if err != nil || info.Name != "Bot" || info.UID != "123" || info.Account != "bot@example" {
@@ -76,7 +76,7 @@ func TestUploadAndInteractiveResponse(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(map[string]interface{}{"errcode": 0, "msgids": []interface{}{map[string]interface{}{"msgid": "message"}}})
 	}))
 	defer server.Close()
-	client, _ := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	ctx := context.Background()
 	uploaded, err := client.File.Upload(ctx, []byte("png"), &UploadOptions{Filename: "a.png", ContentType: "image/png"})
 	if err != nil || uploaded.FID != "media" || uploaded.MediaType != "image" {

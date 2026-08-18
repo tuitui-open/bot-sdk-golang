@@ -1,7 +1,6 @@
 package tuitui
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -39,12 +38,7 @@ type resolvedConfig struct {
 	httpTimeout      time.Duration
 }
 
-func resolveConfig(appID, appSecret string, options *ClientOptions) (resolvedConfig, error) {
-	appID = strings.TrimSpace(appID)
-	appSecret = strings.TrimSpace(appSecret)
-	if appID == "" || appSecret == "" {
-		return resolvedConfig{}, fmt.Errorf("[tuitui] appID and appSecret are required")
-	}
+func resolveConfig(appID, appSecret string, options *ClientOptions) resolvedConfig {
 	resolved := ClientOptions{}
 	if options != nil {
 		resolved = *options
@@ -66,5 +60,5 @@ func resolveConfig(appID, appSecret string, options *ClientOptions) (resolvedCon
 		fetchWithSSRF:    resolved.FetchWithSSRF,
 		logger:           resolved.Logger,
 		httpTimeout:      resolved.HTTPTimeout,
-	}, nil
+	}
 }

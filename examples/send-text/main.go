@@ -18,17 +18,14 @@ func main() {
 	if err := dotenv.LoadClosest(); err != nil {
 		log.Fatal(err)
 	}
-	client, err := tuitui.NewClient(
+	client := tuitui.NewClient(
 		os.Getenv("TUITUI_BOT_APPID"),
 		os.Getenv("TUITUI_BOT_SECRET"),
 		nil,
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
 	response, err := client.IM.SendText(context.Background(), tuitui.SendIMTextOptions{
 		To:   target,
-		Text: "**来自 Go SDK 的消息**",
+		Text: "你好，来自 `go` SDK",
 	})
 	if err != nil {
 		log.Printf("消息发送失败: %v", err)

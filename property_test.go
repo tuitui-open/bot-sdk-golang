@@ -45,10 +45,7 @@ func TestProperty快捷指令Tag往返(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	if _, err := client.Property.SetShortcutCommands(context.Background(), []ShortcutCommand{command}, nil); err != nil {
 		t.Fatal(err)
 	}

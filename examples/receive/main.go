@@ -16,10 +16,7 @@ func main() {
 	}
 	appID := os.Getenv("TUITUI_BOT_APPID")
 	appSecret := os.Getenv("TUITUI_BOT_SECRET")
-	client, err := tuitui.NewClient(appID, appSecret, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	client := tuitui.NewClient(appID, appSecret, nil)
 	client.Event.Subscribe(context.Background(), &tuitui.SubscribeOptions{
 		OnConnected: func() {
 			log.Printf("tuitui bot(%s) 已连接websocket，正在监听事件", appID)

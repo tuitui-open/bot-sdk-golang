@@ -25,11 +25,8 @@ func TestFileSpace删除节点发送完整参数(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.FileSpace.DeleteNode(context.Background(), DeleteFileSpaceNodeOptions{
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	_, err := client.FileSpace.DeleteNode(context.Background(), DeleteFileSpaceNodeOptions{
 		SpaceID:   "team",
 		SpaceType: SpaceTypeTeam,
 		NodeID:    "node",
