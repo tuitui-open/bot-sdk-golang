@@ -45,6 +45,7 @@ func main() {
 - `client.Teams`：团队、频道、帖子 API。
 - `client.File`：底层公共文件 API，可用于消息、帖子等场景。
 - `client.FileSpace`：文件空间，目前仅用于团队模块，包含文件、目录的新增、列表和删除。
+- `client.Group`：建群、群成员管理及群信息查询。
 - `client.Property`：机器人自身属性查询与修改（名称、账号、头像、Webhook、可交互式消息回调地址和快捷指令）。
 - `client.Event`：通过 WebSocket 订阅推推事件，用于实时收消息等场景。
 - `client.Request`：调用尚未封装的原始 Bot API。
