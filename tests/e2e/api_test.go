@@ -26,10 +26,29 @@ func TestPropertyAndIM(t *testing.T) {
 		t.Fatal(err)
 	}
 	runID := fmt.Sprintf("go-im-%d", time.Now().UnixNano())
-	if _, err := client.IM.SendText(ctx, tuitui.SendIMTextOptions{To: client.To.Account(os.Getenv("TARGET_ACCOUNT")), Text: "**Go SDK** `" + runID + "`"}); err != nil {
+	privateTarget := client.To.Account(os.Getenv("TARGET_ACCOUNT"))
+	groupTarget := client.To.Group(os.Getenv("TARGET_GROUP"))
+	response, err := client.IM.SendText(ctx, tuitui.SendIMTextOptions{To: privateTarget, Text: "**Go SDK** `" + runID + "`"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.IM.SendText(ctx, tuitui.SendIMTextOptions{To: client.To.Group(os.Getenv("TARGET_GROUP")), Text: "**Go SDK group** `" + runID + "`"}); err != nil {
+	privateMessageID := requireResponseID(t, response, "msgid", "message_id")
+	response, err = client.IM.SendText(ctx, tuitui.SendIMTextOptions{To: groupTarget, Text: "**Go SDK group** `" + runID + "`"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupMessageID := requireResponseID(t, response, "msgid", "message_id")
+	withoutPush := true
+	if _, err = client.IM.ModifyText(ctx, tuitui.ModifyIMTextOptions{To: privateTarget, MessageID: privateMessageID, Text: "**Go SDK edited** `" + runID + "`", WithoutPush: &withoutPush}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = client.IM.ModifyText(ctx, tuitui.ModifyIMTextOptions{To: groupTarget, MessageID: groupMessageID, Text: "**Go SDK group edited** `" + runID + "`", WithoutPush: &withoutPush}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = client.IM.Recall(ctx, tuitui.RecallIMMessageOptions{To: privateTarget, MessageID: privateMessageID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = client.IM.Recall(ctx, tuitui.RecallIMMessageOptions{To: groupTarget, MessageID: groupMessageID}); err != nil {
 		t.Fatal(err)
 	}
 }

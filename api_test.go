@@ -91,6 +91,37 @@ func TestSendTextBuildsGroupPayload(t *testing.T) {
 	}
 }
 
+func TestRecallBuildsSingleAndGroupPayload(t *testing.T) {
+	t.Parallel()
+	var payloads []map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var payload map[string]interface{}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		payloads = append(payloads, payload)
+		_, _ = writer.Write([]byte(`{"errcode":0}`))
+	}))
+	defer server.Close()
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	ctx := context.Background()
+
+	if _, err := client.IM.Recall(ctx, RecallIMMessageOptions{To: client.To.Account("alice"), MessageID: "m1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.IM.Recall(ctx, RecallIMMessageOptions{To: client.To.Group("group"), MessageID: "m2"}); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []map[string]interface{}{
+		{"tousers": []interface{}{map[string]interface{}{"user": "alice", "msgid": "m1"}}, "msgtype": "recall"},
+		{"togroups": []interface{}{map[string]interface{}{"group": "group", "msgid": "m2"}}, "msgtype": "recall"},
+	}
+	if !reflect.DeepEqual(payloads, want) {
+		t.Fatalf("unexpected recall payloads: %#v", payloads)
+	}
+}
+
 func TestUploadDetectsSupportedImages(t *testing.T) {
 	t.Parallel()
 	if detectUploadMediaType("image/png", "image.bin") != "image" {

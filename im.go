@@ -87,6 +87,10 @@ type ModifyIMInteractiveOptions struct {
 	MessageID   string
 	Interactive InteractiveMessage
 }
+type RecallIMMessageOptions struct {
+	To        ToTarget
+	MessageID string
+}
 type IMEmojiReactionOptions struct {
 	To               ToTarget
 	MessageID, Emoji string
@@ -229,6 +233,14 @@ func (i *IMAPI) ModifyInteractive(ctx context.Context, options ModifyIMInteracti
 	}
 	payload["msgtype"] = "interactive"
 	payload["interactive"] = options.Interactive
+	return i.http.post(ctx, "/message/custom/modify", payload)
+}
+func (i *IMAPI) Recall(ctx context.Context, options RecallIMMessageOptions) (APIResponse, error) {
+	payload, err := editableTargetPayload(options.To, options.MessageID)
+	if err != nil {
+		return nil, err
+	}
+	payload["msgtype"] = "recall"
 	return i.http.post(ctx, "/message/custom/modify", payload)
 }
 func (i *IMAPI) EmojiReaction(ctx context.Context, options IMEmojiReactionOptions) (APIResponse, error) {
