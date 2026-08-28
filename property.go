@@ -20,6 +20,14 @@ type ShortcutCommand struct {
 
 type SetShortcutCommandsOptions struct{ NoAt *bool }
 
+type WorkspaceMenu struct {
+	Name string
+	URL  string
+	// OpenMode 为打开方式，当前支持 internal、single_tab、local_browser、side_panel。
+	OpenMode string
+	AppID    string
+}
+
 type PropertyAPI struct{ http *httpAPI }
 
 func (p *PropertyAPI) Info(ctx context.Context) (BotInfo, error) {
@@ -76,4 +84,22 @@ func (p *PropertyAPI) GetShortcutCommands(ctx context.Context) ([]ShortcutComman
 		})
 	}
 	return commands, nil
+}
+
+func (p *PropertyAPI) SetWorkspaceMenus(ctx context.Context, menus []WorkspaceMenu) (APIResponse, error) {
+	items := make([]map[string]interface{}, 0, len(menus))
+	for _, menu := range menus {
+		item := map[string]interface{}{
+			"name":      menu.Name,
+			"url":       menu.URL,
+			"open_mode": menu.OpenMode,
+		}
+		if menu.AppID != "" {
+			item["app_id"] = menu.AppID
+		}
+		items = append(items, item)
+	}
+	return p.http.post(ctx, "/workspaceMenu/set", map[string]interface{}{
+		"workspace_menus": items,
+	})
 }

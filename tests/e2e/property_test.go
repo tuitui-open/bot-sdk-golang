@@ -13,7 +13,7 @@ import (
 	tuitui "github.com/tuitui-open/bot-sdk-golang"
 )
 
-func TestProperty设置并读取带Tag的快捷指令(t *testing.T) {
+func TestProperty设置快捷指令和工作区菜单(t *testing.T) {
 	requireEnv(t, "TUITUI_BOT_APPID", "TUITUI_BOT_SECRET")
 	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
 
@@ -41,10 +41,22 @@ func TestProperty设置并读取带Tag的快捷指令(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	found := false
 	for _, actual := range commands {
 		if actual == command {
-			return
+			found = true
+			break
 		}
 	}
-	t.Fatalf("未读取到本次设置的快捷指令：want=%#v, got=%#v", command, commands)
+	if !found {
+		t.Fatalf("未读取到本次设置的快捷指令：want=%#v, got=%#v", command, commands)
+	}
+
+	_, err = client.Property.SetWorkspaceMenus(ctx, []tuitui.WorkspaceMenu{
+		{Name: "推推官网", URL: "https://tuitui.cn", OpenMode: "side_panel"},
+		{Name: "Go SDK", URL: "https://github.com/tuitui-open/bot-sdk-golang", OpenMode: "local_browser"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
