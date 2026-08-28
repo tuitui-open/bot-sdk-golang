@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -13,6 +14,51 @@ func TestNewClient允许空凭证(t *testing.T) {
 	client := NewClient("", "", nil)
 	if client.config.appID != "" || client.config.appSecret != "" {
 		t.Fatalf("客户端未保留空凭证：%#v", client.config)
+	}
+}
+
+func TestSendStrongNoticeAndPhoneAlarm(t *testing.T) {
+	t.Parallel()
+	var paths []string
+	var payloads []map[string]interface{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		paths = append(paths, request.URL.Path)
+		var payload map[string]interface{}
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		payloads = append(payloads, payload)
+		_, _ = writer.Write([]byte(`{"errcode":0}`))
+	}))
+	defer server.Close()
+	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+	ctx := context.Background()
+
+	if _, err := client.IM.SendStrongNotice(ctx, SendStrongNoticeOptions{
+		Account: "alice", Content: "紧急通知", SMSNotice: true, CallNotice: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.IM.SendPhoneAlarm(ctx, SendPhoneAlarmOptions{
+		Message: "支付服务", Accounts: []string{"alice"}, Mobiles: []string{"13600000000"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(paths, []string{"/strongNotice/single/send", "/message/custom/send"}) {
+		t.Fatalf("unexpected paths: %#v", paths)
+	}
+	if !reflect.DeepEqual(payloads[0], map[string]interface{}{
+		"account": "alice", "content": "紧急通知", "sms_notice": true, "call_notice": false,
+	}) {
+		t.Fatalf("unexpected strong notice payload: %#v", payloads[0])
+	}
+	if !reflect.DeepEqual(payloads[1], map[string]interface{}{
+		"tousers": []interface{}{"alice"},
+		"msgtype": "voice",
+		"voice":   map[string]interface{}{"mobiles": []interface{}{"13600000000"}, "message": "支付服务"},
+	}) {
+		t.Fatalf("unexpected phone alarm payload: %#v", payloads[1])
 	}
 }
 

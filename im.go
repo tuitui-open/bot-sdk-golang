@@ -65,6 +65,17 @@ type SendIMInteractiveOptions struct {
 	To          ToTarget
 	Interactive InteractiveMessage
 }
+type SendStrongNoticeOptions struct {
+	Account    string
+	Content    string
+	SMSNotice  bool
+	CallNotice bool
+}
+type SendPhoneAlarmOptions struct {
+	Message  string
+	Accounts []string
+	Mobiles  []string
+}
 type ModifyIMTextOptions struct {
 	To          ToTarget
 	MessageID   string
@@ -104,6 +115,25 @@ func (i *IMAPI) SendText(ctx context.Context, options SendIMTextOptions) (APIRes
 	payload["msgtype"] = "text"
 	payload["at"] = at
 	payload["text"] = text
+	return i.http.post(ctx, "/message/custom/send", payload)
+}
+func (i *IMAPI) SendStrongNotice(ctx context.Context, options SendStrongNoticeOptions) (APIResponse, error) {
+	return i.http.post(ctx, "/strongNotice/single/send", map[string]interface{}{
+		"account":     options.Account,
+		"content":     options.Content,
+		"sms_notice":  options.SMSNotice,
+		"call_notice": options.CallNotice,
+	})
+}
+func (i *IMAPI) SendPhoneAlarm(ctx context.Context, options SendPhoneAlarmOptions) (APIResponse, error) {
+	voice := map[string]interface{}{"message": options.Message}
+	if options.Mobiles != nil {
+		voice["mobiles"] = options.Mobiles
+	}
+	payload := map[string]interface{}{"msgtype": "voice", "voice": voice}
+	if options.Accounts != nil {
+		payload["tousers"] = options.Accounts
+	}
 	return i.http.post(ctx, "/message/custom/send", payload)
 }
 func (i *IMAPI) SendMixed(ctx context.Context, options SendIMMixedOptions) (APIResponse, error) {
