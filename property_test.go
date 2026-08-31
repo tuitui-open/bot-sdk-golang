@@ -89,7 +89,7 @@ func TestProperty全量设置和清空工作区菜单(t *testing.T) {
 	client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
 	menus := []WorkspaceMenu{
 		{Name: "终端", URL: "https://example.com/tty", OpenMode: "side_panel"},
-		{Name: "应用", URL: "https://example.com/app", OpenMode: "single_tab", AppID: "example-app"},
+		{Name: "应用", URL: "https://example.com/app", OpenMode: "single_tab", AppID: "example-app", Visibility: "public"},
 	}
 	if _, err := client.Property.SetWorkspaceMenus(context.Background(), menus); err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestProperty全量设置和清空工作区菜单(t *testing.T) {
 	want := []map[string]interface{}{
 		{"workspace_menus": []interface{}{
 			map[string]interface{}{"name": "终端", "url": "https://example.com/tty", "open_mode": "side_panel"},
-			map[string]interface{}{"name": "应用", "url": "https://example.com/app", "open_mode": "single_tab", "app_id": "example-app"},
+			map[string]interface{}{"name": "应用", "url": "https://example.com/app", "open_mode": "single_tab", "app_id": "example-app", "visibility": "public"},
 		}},
 		{"workspace_menus": []interface{}{}},
 	}

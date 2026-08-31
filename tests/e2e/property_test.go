@@ -53,8 +53,8 @@ func TestProperty设置快捷指令和工作区菜单(t *testing.T) {
 	}
 
 	_, err = client.Property.SetWorkspaceMenus(ctx, []tuitui.WorkspaceMenu{
-		{Name: "推推官网", URL: "https://tuitui.cn", OpenMode: "side_panel"},
-		{Name: "Go SDK", URL: "https://github.com/tuitui-open/bot-sdk-golang", OpenMode: "local_browser"},
+		{Name: "推推官网", URL: "https://tuitui.cn", OpenMode: "side_panel", Visibility: "public"},
+		{Name: "Go SDK", URL: "https://github.com/tuitui-open/bot-sdk-golang", OpenMode: "local_browser", Visibility: "private"},
 	})
 	if err != nil {
 		t.Fatal(err)

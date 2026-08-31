@@ -26,6 +26,8 @@ type WorkspaceMenu struct {
 	// OpenMode 为打开方式，当前支持 internal、single_tab、local_browser、side_panel。
 	OpenMode string
 	AppID    string
+	// Visibility 菜单可见性。当前支持 private（仅 Bot 主人可见）、public（其他人也可见）；默认为 private。
+	Visibility string
 }
 
 type PropertyAPI struct{ http *httpAPI }
@@ -96,6 +98,9 @@ func (p *PropertyAPI) SetWorkspaceMenus(ctx context.Context, menus []WorkspaceMe
 		}
 		if menu.AppID != "" {
 			item["app_id"] = menu.AppID
+		}
+		if menu.Visibility != "" {
+			item["visibility"] = menu.Visibility
 		}
 		items = append(items, item)
 	}
