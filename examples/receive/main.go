@@ -3,20 +3,18 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/tuitui-open/bot-sdk-golang/examples/internal/sample"
 	"log"
-	"os"
 
 	tuitui "github.com/tuitui-open/bot-sdk-golang"
-	"github.com/tuitui-open/bot-sdk-golang/internal/dotenv"
 )
 
 func main() {
-	if err := dotenv.LoadClosest(); err != nil {
-		log.Fatal(err)
+	appID, appSecret, options, configErr := sample.LoadConfig()
+	if configErr != nil {
+		log.Fatal(configErr)
 	}
-	appID := os.Getenv("TUITUI_BOT_APPID")
-	appSecret := os.Getenv("TUITUI_BOT_SECRET")
-	client := tuitui.NewClient(appID, appSecret, nil)
+	client := tuitui.NewClient(appID, appSecret, options)
 	client.Event.Subscribe(context.Background(), &tuitui.SubscribeOptions{
 		OnConnected: func() {
 			log.Printf("tuitui bot(%s) 已连接websocket，正在监听事件", appID)

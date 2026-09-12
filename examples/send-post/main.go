@@ -7,7 +7,6 @@ import (
 
 	tuitui "github.com/tuitui-open/bot-sdk-golang"
 	"github.com/tuitui-open/bot-sdk-golang/examples/internal/sample"
-	"github.com/tuitui-open/bot-sdk-golang/internal/dotenv"
 )
 
 func main() {
@@ -15,10 +14,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := dotenv.LoadClosest(); err != nil {
-		log.Fatal(err)
+	appID, appSecret, options, configErr := sample.LoadConfig()
+	if configErr != nil {
+		log.Fatal(configErr)
 	}
-	client := tuitui.NewClient(os.Getenv("TUITUI_BOT_APPID"), os.Getenv("TUITUI_BOT_SECRET"), nil)
+	client := tuitui.NewClient(appID, appSecret, options)
 	response, err := client.Teams.SendPost(context.Background(), tuitui.SendPostOptions{
 		TeamID: teamID, ChannelID: channelID, Text: "**来自 Go SDK 的帖子**",
 	})

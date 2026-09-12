@@ -70,23 +70,28 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 	}
 	started := time.Now()
 	if h.config.logger != nil {
-		h.config.logger.Debug("[tuitui] " + endpoint + " request")
+		safeLog(func() { h.config.logger.Debug("[tuitui] " + endpoint + " request") })
 		defer func() {
-			h.config.logger.Debug(fmt.Sprintf(
-				"[tuitui] %s completed in %dms",
-				endpoint,
-				int64(time.Since(started)/time.Millisecond),
-			))
+			safeLog(func() {
+				h.config.logger.Debug(fmt.Sprintf(
+					"[tuitui] %s completed in %dms",
+					endpoint,
+					int64(time.Since(started)/time.Millisecond),
+				))
+			})
 		}()
 	}
 
 	// SDK 绝大多数场景为低频调用。为简化资源生命周期，每次请求使用独立的
 	// Transport 和 Client，不在请求之间共享连接池。
-	transport := &http.Transport{}
+	transport := &http.Transport{DisableKeepAlives: true}
 	client := &http.Client{Transport: transport, Timeout: h.config.httpTimeout}
 	defer transport.CloseIdleConnections()
 	response, err := client.Do(req)
 	if err != nil {
+		if urlError, ok := err.(*url.Error); ok {
+			err = urlError.Err
+		}
 		return nil, newAPIError(endpoint, "request failed", err)
 	}
 	defer response.Body.Close()
@@ -141,3 +146,6 @@ func stringValue(value interface{}) string {
 	}
 	return fmt.Sprint(value)
 }
+
+// 用户日志回调不得改变请求结果。
+func safeLog(callback func()) { defer func() { _ = recover() }(); callback() }

@@ -16,6 +16,7 @@ type Client struct {
 	Group     *GroupAPI
 	Event     *EventAPI
 	Property  *PropertyAPI
+	Agent     *AgentAPI
 }
 
 func NewClient(appID, appSecret string, options *ClientOptions) *Client {
@@ -25,6 +26,7 @@ func NewClient(appID, appSecret string, options *ClientOptions) *Client {
 	records := &recordsAPI{http: httpClient}
 	teams := &TeamsAPI{http: httpClient, uploader: uploader}
 	client := &Client{config: config, http: httpClient, uploader: uploader}
+	client.Agent = &AgentAPI{http: httpClient, config: config}
 	client.To = ToAPI{}
 	client.IM = &IMAPI{http: httpClient, uploader: uploader, records: records}
 	client.Teams = teams

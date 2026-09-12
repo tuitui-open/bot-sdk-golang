@@ -18,8 +18,8 @@ func TestHTTPRequestsUseIndependentTransports(t *testing.T) {
 		if request.URL.Query().Get("appid") != "app" || request.URL.Query().Get("secret") != "secret" {
 			t.Fatalf("credentials missing from query: %s", request.URL.RawQuery)
 		}
-		if request.Close {
-			t.Error("请求不应强制关闭连接")
+		if !request.Close {
+			t.Error("每次请求应关闭连接")
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		_, _ = writer.Write([]byte(`{"errcode":0}`))
