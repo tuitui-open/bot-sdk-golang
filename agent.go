@@ -270,30 +270,22 @@ func agentDataFields(data interface{}) (map[string]interface{}, error) {
 	}
 	return result, nil
 }
-func agentTruncate(value interface{}) interface{} {
-	s, ok := value.(string)
-	if !ok {
-		return value
-	}
-	r := []rune(s)
-	if len(r) <= 500 {
-		return s
-	}
-	return string(r[:500]) + fmt.Sprintf("…[truncated %d chars]", len(r)-500)
-}
-func agentTrimMessage(value interface{}) {
-	if message, ok := value.(map[string]interface{}); ok {
-		if content, exists := message["content"]; exists {
-			message["content"] = agentTruncate(content)
+func agentSerialize(name string, data interface{}) (string, error) {
+	var fields map[string]interface{}
+	var err error
+	if name == AgentEventEnd {
+		var ok bool
+		fields, ok = data.(map[string]interface{})
+		if !ok || fields == nil {
+			return "", fmt.Errorf("[tuitui] data must be an object")
+		}
+	} else {
+		fields, err = agentDataFields(data)
+		if err != nil {
+			return "", err
 		}
 	}
-}
-func agentSerialize(name string, data interface{}) (string, error) {
-	fields, err := agentDataFields(data)
-	if err != nil {
-		return "", err
-	}
-	// 序列化副本避免裁剪触碰调用方持有的嵌套数据，同时校验任意 JSON 值。
+	// 序列化副本用于校验任意 JSON 值，并避免修改调用方输入。
 	raw, err := json.Marshal(fields)
 	if err != nil {
 		return "", err
@@ -326,33 +318,9 @@ func agentSerialize(name string, data interface{}) (string, error) {
 		if v := copied["outcome"]; v != "ok" && v != "error" && v != "cancelled" {
 			err = fmt.Errorf("[tuitui] data.outcome is invalid")
 		}
-	case AgentEventEnd:
-		if v := copied["status"]; v != "done" && v != "failed" && v != "canceled" && v != "timeout" {
-			err = fmt.Errorf("[tuitui] data.status is invalid")
-		}
 	}
 	if err != nil {
 		return "", err
-	}
-	if v, ok := copied["systemPrompt"]; ok {
-		copied["systemPrompt"] = agentTruncate(v)
-	}
-	if values, ok := copied["assistantTexts"].([]interface{}); ok {
-		for i, v := range values {
-			values[i] = agentTruncate(v)
-		}
-	}
-	for _, key := range []string{"messages", "historyMessages"} {
-		if values, ok := copied[key].([]interface{}); ok {
-			for _, v := range values {
-				agentTrimMessage(v)
-			}
-		}
-	}
-	agentTrimMessage(copied["message"])
-	agentTrimMessage(copied["lastAssistant"])
-	if name == AgentEventAfterToolCall {
-		copied["result"] = agentTruncate(copied["result"])
 	}
 	raw, err = json.Marshal(copied)
 	return string(raw), err

@@ -67,6 +67,7 @@ func TestAgent群消息上报十二条事件(t *testing.T) {
 	}
 	tool := tuitui.AgentEventToolContext{Context: base, ToolCallID: "parent-tool"}
 	childTool := tuitui.AgentEventToolContext{Context: sub, ToolCallID: "child-tool"}
+	cacheWrite := float64(0)
 	events := []tuitui.AgentEvent{
 		tuitui.AgentMessageReceivedEvent{
 			Context: base,
@@ -86,6 +87,7 @@ func TestAgent群消息上报十二条事件(t *testing.T) {
 			Data: tuitui.AgentEventLLMOutputData{
 				AssistantTexts: []string{"开始查询"},
 				Thinking:       "查询资料",
+				Usage:          tuitui.AgentEventLLMUsage{Input: 1, Output: 1, CacheRead: 0, CacheWrite: &cacheWrite, Total: 2},
 			},
 		},
 		tuitui.AgentBeforeToolCallEvent{
@@ -113,7 +115,8 @@ func TestAgent群消息上报十二条事件(t *testing.T) {
 			Context: sub,
 			Data: tuitui.AgentEventLLMOutputData{
 				AssistantTexts: []string{"完成"},
-				Thinking:       nil,
+				Thinking:       "",
+				Usage:          tuitui.AgentEventLLMUsage{Input: 1, Output: 1, CacheRead: 0, CacheWrite: &cacheWrite, Total: 2},
 			},
 		},
 		tuitui.AgentBeforeToolCallEvent{
@@ -137,10 +140,7 @@ func TestAgent群消息上报十二条事件(t *testing.T) {
 		},
 		tuitui.AgentEndEvent{
 			Context: base,
-			Data: tuitui.AgentEventEndData{
-				Success: true,
-				Status:  tuitui.AgentEndDone,
-			},
+			Data:    map[string]interface{}{"success": true},
 		},
 	}
 	for _, event := range events {

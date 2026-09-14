@@ -38,7 +38,6 @@ type BuildAgentSubagentContextOptions struct {
 	RequesterContext AgentEventContext
 	SubagentID       *string
 }
-type AgentEventMessage map[string]interface{}
 type AgentEventLLMUsage struct {
 	Input      float64                `json:"input"`
 	Output     float64                `json:"output"`
@@ -47,14 +46,6 @@ type AgentEventLLMUsage struct {
 	Total      float64                `json:"total"`
 	Extensions map[string]interface{} `json:"-"`
 }
-type AgentEndStatus string
-
-const (
-	AgentEndDone     AgentEndStatus = "done"
-	AgentEndFailed   AgentEndStatus = "failed"
-	AgentEndCanceled AgentEndStatus = "canceled"
-	AgentEndTimeout  AgentEndStatus = "timeout"
-)
 
 type AgentSubagentOutcome string
 
@@ -83,14 +74,9 @@ func (AgentMessageReceivedEvent) agentEvent() {}
 const AgentEventLLMInput = "llm_input"
 
 type AgentEventLLMInputData struct {
-	SessionID       string                 `json:"sessionId,omitempty"`
-	Provider        string                 `json:"provider,omitempty"`
-	Model           string                 `json:"model"`
-	SystemPrompt    string                 `json:"systemPrompt,omitempty"`
-	Prompt          string                 `json:"prompt"`
-	HistoryMessages []AgentEventMessage    `json:"historyMessages,omitempty"`
-	ImagesCount     *float64               `json:"imagesCount,omitempty"`
-	Extensions      map[string]interface{} `json:"-"`
+	Model      string                 `json:"model"`
+	Prompt     string                 `json:"prompt"`
+	Extensions map[string]interface{} `json:"-"`
 }
 type AgentLLMInputEvent struct {
 	Context AgentEventWorkContext
@@ -102,12 +88,8 @@ func (AgentLLMInputEvent) agentEvent() {}
 const AgentEventLLMOutput = "llm_output"
 
 type AgentEventLLMOutputData struct {
-	SessionID      string                 `json:"sessionId,omitempty"`
-	Provider       string                 `json:"provider,omitempty"`
-	Model          string                 `json:"model,omitempty"`
 	AssistantTexts []string               `json:"assistantTexts"`
-	Thinking       interface{}            `json:"thinking"`
-	LastAssistant  AgentEventMessage      `json:"lastAssistant,omitempty"`
+	Thinking       string                 `json:"thinking"`
 	Usage          AgentEventLLMUsage     `json:"usage"`
 	Extensions     map[string]interface{} `json:"-"`
 }
@@ -136,10 +118,7 @@ const AgentEventAfterToolCall = "after_tool_call"
 
 type AgentEventAfterToolCallData struct {
 	ToolName   string                 `json:"toolName"`
-	Params     map[string]interface{} `json:"params,omitempty"`
 	Result     interface{}            `json:"result"`
-	Error      *string                `json:"error,omitempty"`
-	DurationMS *float64               `json:"durationMs,omitempty"`
 	Extensions map[string]interface{} `json:"-"`
 }
 type AgentAfterToolCallEvent struct {
@@ -166,7 +145,6 @@ func (AgentSubagentSpawnedEvent) agentEvent() {}
 const AgentEventSubagentEnded = "subagent_ended"
 
 type AgentEventSubagentEndedData struct {
-	AgentID    string                 `json:"agentId,omitempty"`
 	Outcome    AgentSubagentOutcome   `json:"outcome"`
 	Reason     string                 `json:"reason,omitempty"`
 	Extensions map[string]interface{} `json:"-"`
@@ -180,18 +158,9 @@ func (AgentSubagentEndedEvent) agentEvent() {}
 
 const AgentEventEnd = "agent_end"
 
-type AgentEventEndData struct {
-	Messages   []AgentEventMessage    `json:"messages,omitempty"`
-	Success    bool                   `json:"success"`
-	Status     AgentEndStatus         `json:"status"`
-	Reason     string                 `json:"reason,omitempty"`
-	Error      *string                `json:"error,omitempty"`
-	DurationMS *float64               `json:"durationMs,omitempty"`
-	Extensions map[string]interface{} `json:"-"`
-}
 type AgentEndEvent struct {
 	Context AgentEventContext
-	Data    AgentEventEndData
+	Data    map[string]interface{}
 }
 
 func (AgentEndEvent) agentEvent() {}

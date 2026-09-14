@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -96,12 +97,12 @@ func TestAgent上下文路由与关联(t *testing.T) {
 		t.Fatal("空子 ID 未拒绝")
 	}
 }
-func TestAgent八种事件与裁剪(t *testing.T) {
+func TestAgent八种事件与长字段原样上报(t *testing.T) {
 	long := strings.Repeat("😀", 501)
 	base := agentBase()
 	sub := AgentEventSubagentContext{AgentEventContext: AgentEventContext{SessionKey: "agent:app:subagent:s", MessageID: "m", RunID: "s"}, RequesterSessionKey: base.SessionKey}
-	input := AgentEventLLMInputData{Model: "model", Prompt: long, SystemPrompt: long, HistoryMessages: []AgentEventMessage{{"content": long, "extra": long}}, Extensions: map[string]interface{}{"message": map[string]interface{}{"content": long}, "unknown": long}}
-	events := []AgentEvent{agentEvent(), AgentLLMInputEvent{Context: base, Data: input}, AgentLLMOutputEvent{Context: sub, Data: AgentEventLLMOutputData{AssistantTexts: []string{long}, Thinking: nil, LastAssistant: AgentEventMessage{"content": long}}}, AgentBeforeToolCallEvent{Context: AgentEventToolContext{Context: sub, ToolCallID: "t"}, Data: AgentEventBeforeToolCallData{ToolName: "tool"}}, AgentAfterToolCallEvent{Context: AgentEventToolContext{Context: sub, ToolCallID: "t"}, Data: AgentEventAfterToolCallData{ToolName: "tool", Result: long}}, AgentSubagentSpawnedEvent{Context: sub}, AgentSubagentEndedEvent{Context: sub, Data: AgentEventSubagentEndedData{Outcome: AgentSubagentOK}}, AgentEndEvent{Context: base, Data: AgentEventEndData{Status: AgentEndDone, Messages: []AgentEventMessage{{"content": long}}}}}
+	input := AgentEventLLMInputData{Model: "model", Prompt: long, Extensions: map[string]interface{}{"systemPrompt": long, "historyMessages": []interface{}{map[string]interface{}{"content": long}}, "message": map[string]interface{}{"content": long}, "unknown": long}}
+	events := []AgentEvent{agentEvent(), AgentLLMInputEvent{Context: base, Data: input}, AgentLLMOutputEvent{Context: sub, Data: AgentEventLLMOutputData{AssistantTexts: []string{long}, Thinking: "", Extensions: map[string]interface{}{"lastAssistant": map[string]interface{}{"content": long}}}}, AgentBeforeToolCallEvent{Context: AgentEventToolContext{Context: sub, ToolCallID: "t"}, Data: AgentEventBeforeToolCallData{ToolName: "tool"}}, AgentAfterToolCallEvent{Context: AgentEventToolContext{Context: sub, ToolCallID: "t"}, Data: AgentEventAfterToolCallData{ToolName: "tool", Result: long}}, AgentSubagentSpawnedEvent{Context: sub}, AgentSubagentEndedEvent{Context: sub, Data: AgentEventSubagentEndedData{Outcome: AgentSubagentOK}}, AgentEndEvent{Context: base, Data: map[string]interface{}{"success": true, "details": map[string]interface{}{"items": []interface{}{true, nil}}}}}
 	for _, event := range events {
 		name, _, data := agentFields(event)
 		t.Run(name, func(t *testing.T) {
@@ -112,26 +113,46 @@ func TestAgent八种事件与裁剪(t *testing.T) {
 			var v map[string]interface{}
 			json.Unmarshal([]byte(raw), &v)
 			if name == AgentEventLLMInput {
-				if v["prompt"] != long || v["unknown"] != long || !strings.HasSuffix(v["systemPrompt"].(string), "…[truncated 1 chars]") {
+				if v["prompt"] != long || v["unknown"] != long || v["systemPrompt"] != long {
 					t.Fatal(v)
 				}
 			}
-			if name == AgentEventLLMOutput && v["thinking"] != nil {
+			if name == AgentEventLLMOutput && v["thinking"] != "" {
 				t.Fatal(v)
 			}
 		})
 	}
-	if input.HistoryMessages[0]["content"] != long || input.SystemPrompt != long {
+	if input.Extensions["systemPrompt"] != long {
 		t.Fatal("修改了输入")
 	}
-	for _, v := range []interface{}{nil, false, 0, []interface{}{}, map[string]interface{}{"content": long}} {
+	for _, v := range []interface{}{nil, false, 0, []interface{}{}, map[string]interface{}{"content": long}, long} {
 		raw, err := agentSerialize(AgentEventAfterToolCall, AgentEventAfterToolCallData{ToolName: "tool", Result: v})
-		if err != nil || !strings.Contains(raw, "\"result\":") {
+		if err != nil || !strings.Contains(raw, "\"result\":") || (v == long && !strings.Contains(raw, long)) {
 			t.Fatal(raw, err)
 		}
 	}
-	if agentTruncate(strings.Repeat("😀", 500)) != strings.Repeat("😀", 500) {
-		t.Fatal("边界裁剪")
+}
+func TestAgent结束数据接受任意JSON对象(t *testing.T) {
+	values := []map[string]interface{}{
+		{},
+		{"nested": map[string]interface{}{"values": []interface{}{1, "two", nil}}},
+		{"enabled": true, "value": nil},
+	}
+	for _, value := range values {
+		raw, err := agentSerialize(AgentEventEnd, value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var actual map[string]interface{}
+		expectedRaw, _ := json.Marshal(value)
+		var expected map[string]interface{}
+		_ = json.Unmarshal(expectedRaw, &expected)
+		if err := json.Unmarshal([]byte(raw), &actual); err != nil || !reflect.DeepEqual(actual, expected) {
+			t.Fatal(actual, value, err)
+		}
+	}
+	if _, err := agentSerialize(AgentEventEnd, map[string]interface{}{"invalid": math.Inf(1)}); err == nil {
+		t.Fatal("不可序列化的结束数据未拒绝")
 	}
 }
 func TestAgent非法输入仅记录失败(t *testing.T) {
@@ -292,15 +313,15 @@ func TestAgentHTTP失败与日志恐慌继续(t *testing.T) {
 
 func TestAgent保留空数组数值与扩展冲突(t *testing.T) {
 	zero := float64(0)
-	raw, err := agentSerialize(AgentEventLLMInput, AgentEventLLMInputData{Model: "m", Prompt: "p", HistoryMessages: []AgentEventMessage{}, ImagesCount: &zero, Extensions: map[string]interface{}{"large": int64(9007199254740993)}})
+	raw, err := agentSerialize(AgentEventLLMInput, AgentEventLLMInputData{Model: "m", Prompt: "p", Extensions: map[string]interface{}{"historyMessages": []interface{}{}, "imagesCount": zero, "large": int64(9007199254740993)}})
 	if err != nil || !strings.Contains(raw, `"historyMessages":[]`) || !strings.Contains(raw, `"imagesCount":0`) || !strings.Contains(raw, `9007199254740993`) {
 		t.Fatal(raw, err)
 	}
-	raw, err = agentSerialize(AgentEventLLMOutput, AgentEventLLMOutputData{AssistantTexts: []string{}, Thinking: false, Usage: AgentEventLLMUsage{CacheWrite: &zero}})
-	if err != nil || !strings.Contains(raw, `"assistantTexts":[]`) || !strings.Contains(raw, `"thinking":false`) || !strings.Contains(raw, `"cacheWrite":0`) {
+	raw, err = agentSerialize(AgentEventLLMOutput, AgentEventLLMOutputData{AssistantTexts: []string{}, Thinking: "", Usage: AgentEventLLMUsage{CacheWrite: &zero}})
+	if err != nil || !strings.Contains(raw, `"assistantTexts":[]`) || !strings.Contains(raw, `"thinking":""`) || !strings.Contains(raw, `"cacheWrite":0`) {
 		t.Fatal(raw, err)
 	}
-	for _, data := range []interface{}{AgentEventLLMInputData{Model: "m", Prompt: "p", Extensions: map[string]interface{}{"sessionId": "conflict"}}, AgentEventLLMOutputData{AssistantTexts: []string{}, Usage: AgentEventLLMUsage{Extensions: map[string]interface{}{"input": 1}}}} {
+	for _, data := range []interface{}{AgentEventLLMInputData{Model: "m", Prompt: "p", Extensions: map[string]interface{}{"model": "conflict"}}, AgentEventLLMOutputData{AssistantTexts: []string{}, Usage: AgentEventLLMUsage{Extensions: map[string]interface{}{"input": 1}}}} {
 		if _, err := agentSerialize(AgentEventLLMInput, data); err == nil {
 			t.Fatal("扩展覆盖未拒绝")
 		}

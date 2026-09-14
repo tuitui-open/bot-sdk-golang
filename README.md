@@ -82,13 +82,13 @@ Agent 目标的 `direct/group/channel` 和 `sessionKey` 是上报协议字段，
 `AgentSubagentEndedEvent` 和 `AgentEndEvent`，分别对应 `message_received`、`llm_input`、
 `llm_output`、`before_tool_call`、`after_tool_call`、`subagent_spawned`、`subagent_ended`、`agent_end`。
 每种事件的数据使用对应 `AgentEvent...Data`，可通过 `Extensions` 保留附加字段；附加字段不得覆盖声明字段。
-`Thinking`、`Result` 的 nil 表示 JSON null，false、0 和非 nil 空切片保留原值。
+`Thinking` 使用字符串，没有思考内容时传空字符串；`Result` 可使用任意 JSON 值。
 
 `Report` 同步校验并入队，无返回值；非法参数仅记失败日志。每个 Client 独立串行发送，失败不重试，
 下一条继续；每条请求使用自己的 context，取消一条不取消其他事件。可选的 `ClientOptions.Logger`
 收到包含完整响应的成功日志和错误详情；日志 panic 不改变结果。未设置 logger 时静默。
 调用方需保持进程和 context 存活；SDK 不提供 flush、投递保证或退出时自动排空。
-指定大字段超过 500 个 Unicode code point 时裁剪，prompt、thinking 和普通扩展字段不裁剪。
+事件数据在通过 JSON 序列化校验后原样上报；`agent_end.data` 可使用任意 JSON 对象。
 
 示例 `go run ./examples/agent-report` 持续接收消息，完整演示 12 条主/子事件。
 默认 `go test ./...` 仅执行 Mock，不加载真实配置。Agent E2E 显式运行：

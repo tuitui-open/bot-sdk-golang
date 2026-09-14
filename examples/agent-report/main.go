@@ -81,6 +81,8 @@ func reportFlow(ctx context.Context, client *tuitui.Client, body tuitui.EventBod
 	if content == "" {
 		content = "收到消息"
 	}
+	// base.SessionKey 路由会话，MessageID 关联入站消息，RunID 标识本次执行。
+	// Content 是收到的正文；Model/Prompt 是模型及输入。
 	sub, err := client.Agent.BuildSubagentContext(tuitui.BuildAgentSubagentContextOptions{RequesterContext: base})
 	if err != nil {
 		return err
@@ -90,21 +92,28 @@ func reportFlow(ctx context.Context, client *tuitui.Client, body tuitui.EventBod
 	if err := pause(ctx, 2*time.Second); err != nil {
 		return err
 	}
-	client.Agent.Report(ctx, tuitui.AgentLLMOutputEvent{Context: base, Data: tuitui.AgentEventLLMOutputData{AssistantTexts: []string{"查询资料"}, Thinking: "先查询再总结"}})
+	cacheWrite := float64(0)
+	// AssistantTexts/Thinking 是模型回复与思考；Usage 记录输入、输出、缓存读取、
+	// 缓存写入和总 token 数。
+	client.Agent.Report(ctx, tuitui.AgentLLMOutputEvent{Context: base, Data: tuitui.AgentEventLLMOutputData{AssistantTexts: []string{"查询资料"}, Thinking: "先查询再总结", Usage: tuitui.AgentEventLLMUsage{Input: 10, Output: 5, CacheRead: 0, CacheWrite: &cacheWrite, Total: 15}}})
+	// ToolCallID 关联工具开始/结束；ToolName、Params、Result 是工具名、参数和结果。
 	tool := tuitui.AgentEventToolContext{Context: base, ToolCallID: "lookup"}
-	client.Agent.Report(ctx, tuitui.AgentBeforeToolCallEvent{Context: tool, Data: tuitui.AgentEventBeforeToolCallData{ToolName: "lookup"}})
+	client.Agent.Report(ctx, tuitui.AgentBeforeToolCallEvent{Context: tool, Data: tuitui.AgentEventBeforeToolCallData{ToolName: "lookup", Params: map[string]interface{}{"input": content}}})
 	if err := pause(ctx, time.Second); err != nil {
 		return err
 	}
 	client.Agent.Report(ctx, tuitui.AgentAfterToolCallEvent{Context: tool, Data: tuitui.AgentEventAfterToolCallData{ToolName: "lookup", Result: map[string]interface{}{"found": true}}})
-	client.Agent.Report(ctx, tuitui.AgentSubagentSpawnedEvent{Context: sub, Data: tuitui.AgentEventSubagentSpawnedData{Label: "总结助手"}})
+	// 子 Agent Context 的 RequesterSessionKey 指回父会话；AgentID/Label 描述子 Agent，
+	// Outcome/Reason 记录其结束结果及可选原因。
+	client.Agent.Report(ctx, tuitui.AgentSubagentSpawnedEvent{Context: sub, Data: tuitui.AgentEventSubagentSpawnedData{AgentID: "Explore", Label: "总结助手"}})
 	client.Agent.Report(ctx, tuitui.AgentLLMInputEvent{Context: sub, Data: tuitui.AgentEventLLMInputData{Model: "sample-model", Prompt: "总结资料"}})
-	client.Agent.Report(ctx, tuitui.AgentLLMOutputEvent{Context: sub, Data: tuitui.AgentEventLLMOutputData{AssistantTexts: []string{"完成总结"}, Thinking: nil}})
+	client.Agent.Report(ctx, tuitui.AgentLLMOutputEvent{Context: sub, Data: tuitui.AgentEventLLMOutputData{AssistantTexts: []string{"完成总结"}, Thinking: "", Usage: tuitui.AgentEventLLMUsage{Input: 6, Output: 3, CacheRead: 0, CacheWrite: &cacheWrite, Total: 9}}})
 	childTool := tuitui.AgentEventToolContext{Context: sub, ToolCallID: "summarize"}
 	client.Agent.Report(ctx, tuitui.AgentBeforeToolCallEvent{Context: childTool, Data: tuitui.AgentEventBeforeToolCallData{ToolName: "summarize"}})
 	client.Agent.Report(ctx, tuitui.AgentAfterToolCallEvent{Context: childTool, Data: tuitui.AgentEventAfterToolCallData{ToolName: "summarize", Result: "完成"}})
-	client.Agent.Report(ctx, tuitui.AgentSubagentEndedEvent{Context: sub, Data: tuitui.AgentEventSubagentEndedData{Outcome: tuitui.AgentSubagentOK}})
+	client.Agent.Report(ctx, tuitui.AgentSubagentEndedEvent{Context: sub, Data: tuitui.AgentEventSubagentEndedData{Outcome: tuitui.AgentSubagentOK, Reason: "completed"}})
 	duration := float64(time.Since(started)) / float64(time.Millisecond)
-	client.Agent.Report(ctx, tuitui.AgentEndEvent{Context: base, Data: tuitui.AgentEventEndData{Success: true, Status: tuitui.AgentEndDone, DurationMS: &duration}})
+	// AgentEnd Data 接受任意 JSON 对象；这里记录是否成功和实际耗时。
+	client.Agent.Report(ctx, tuitui.AgentEndEvent{Context: base, Data: map[string]interface{}{"success": true, "durationMs": duration}})
 	return nil
 }
