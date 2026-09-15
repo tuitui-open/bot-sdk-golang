@@ -39,6 +39,10 @@ func main() {
 所有网络方法都接收 `context.Context`，调用方可按需取消请求；不需要主动取消时传入
 `context.Background()` 即可。HTTP 请求默认超时时间为 30 秒，也可通过 `ClientOptions.HTTPTimeout` 调整。
 
+## Agent 执行中间步骤上报
+
+`client.Agent` 提供 Agent 执行中间步骤的类型化、保序上报能力。具体调用示例请查看 `examples/agent-report/main.go`。
+
 ## API
 
 - `client.IM`：发送单聊、群聊消息（文本、图片、图文、页面、链接、文件和交互卡片）、编辑消息、表情回复和拉取聊天记录。
@@ -48,6 +52,7 @@ func main() {
 - `client.Group`：建群、群成员管理及群信息查询。
 - `client.Property`：机器人自身属性查询与修改（名称、账号、头像、Webhook、可交互式消息回调地址和快捷指令）。
 - `client.Event`：通过 WebSocket 订阅推推事件，用于实时收消息等场景。
+- `client.Agent`：上报 Agent 执行中间步骤（模型调用、工具调用），供推推客户端展示。
 - `client.Request`：调用尚未封装的原始 Bot API。
 
 消息、帖子的内容支持 Markdown 格式（可交互式消息除外）。

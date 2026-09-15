@@ -34,3 +34,12 @@ go run ./examples/receive
 ```
 
 连接成功后持续输出事件，按 `Ctrl+C` 退出。
+
+## Agent 执行中间步骤上报
+
+```
+go run ./examples/agent-report
+
+# 子 Agent 上报示例
+go run ./examples/agent-report --subagent
+```
