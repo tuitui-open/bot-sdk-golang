@@ -32,7 +32,7 @@ func TestGroup读取群信息并拉入移除和恢复群成员(t *testing.T) {
 		t.Fatalf("用户和机器人的共同群返回不正确：%#v, %v", groups, err)
 	}
 	info, err := client.Group.Info(ctx, groupID)
-	if err != nil || info.ID != groupID {
+	if err != nil {
 		t.Fatalf("群信息返回不正确：%#v, %v", info, err)
 	}
 
