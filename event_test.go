@@ -15,6 +15,16 @@ func Test事件可读取机器人名称(t *testing.T) {
 	}
 }
 
+func Test事件可读取发送者部门路径(t *testing.T) {
+	if (EventBody{}).UserDeptPath() != "" {
+		t.Fatal("缺少部门路径时应返回空字符串")
+	}
+	body := EventBody{"user_dept_path": "企业-研发中心-平台部"}
+	if body.UserDeptPath() != "企业-研发中心-平台部" {
+		t.Fatalf("发送者部门路径不正确：%q", body.UserDeptPath())
+	}
+}
+
 func Test正文渲染名片聊天正文和文件(t *testing.T) {
 	t.Parallel()
 	data := map[string]interface{}{

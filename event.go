@@ -38,6 +38,12 @@ func (body EventBody) BotName() string {
 	return name
 }
 
+// UserDeptPath 返回发送者完整部门路径；无部门或查询失败时返回空字符串。
+func (body EventBody) UserDeptPath() string {
+	path, _ := body["user_dept_path"].(string)
+	return path
+}
+
 type eventEnvelope struct {
 	EventID string                 `json:"event_id"`
 	Header  map[string]interface{} `json:"header"`
