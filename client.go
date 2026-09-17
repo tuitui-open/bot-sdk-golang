@@ -31,7 +31,7 @@ func NewClient(appID, appSecret string, options *ClientOptions) *Client {
 	client.To = ToAPI{}
 	client.IM = &IMAPI{http: httpClient, uploader: uploader, records: records}
 	client.Teams = teams
-	client.File = &FileAPI{uploader: uploader}
+	client.File = &FileAPI{http: httpClient, uploader: uploader}
 	client.FileSpace = &FileSpaceAPI{http: httpClient, uploader: uploader, teams: teams}
 	client.Group = &GroupAPI{http: httpClient}
 	client.Event = &EventAPI{config: config, teams: teams}

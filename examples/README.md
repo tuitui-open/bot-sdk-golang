@@ -27,6 +27,14 @@ go run ./examples/send-interactive --account alice
 go run ./examples/send-post --team 123456 --channel 789012
 ```
 
+## 上传并查询文件
+
+上传示例文件，并输出文件 ID 和临时下载 URL：
+
+```
+go run ./examples/file-op
+```
+
 ## 接收事件
 
 ```

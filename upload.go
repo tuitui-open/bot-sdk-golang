@@ -210,8 +210,38 @@ func firstNonEmpty(values ...string) string {
 }
 func generatedFilename() string { return fmt.Sprintf("media_%d", unixMilli(time.Now())) }
 
-type FileAPI struct{ uploader *uploader }
+type FileURLMap map[string]string
+
+type FileAPI struct {
+	http     *httpAPI
+	uploader *uploader
+}
 
 func (f *FileAPI) Upload(ctx context.Context, source interface{}, options *UploadOptions) (UploadResult, error) {
 	return f.uploader.upload(ctx, source, options)
+}
+
+// Query 查询文件的临时下载 URL。fid 不存在时返回服务端的 APIError。
+func (f *FileAPI) Query(ctx context.Context, fid string) (string, error) {
+	urls, err := f.BatchQuery(ctx, []string{fid})
+	if err != nil {
+		return "", err
+	}
+	return urls[fid], nil
+}
+
+// BatchQuery 批量查询文件的临时下载 URL。
+//
+// 部分 fid 存在时只返回存在项；所有 fid 都不存在时返回服务端的 APIError。
+func (f *FileAPI) BatchQuery(ctx context.Context, fids []string) (FileURLMap, error) {
+	response, err := f.http.post(ctx, "/media/fetch", map[string]interface{}{"media_ids": fids})
+	if err != nil {
+		return nil, err
+	}
+	rawURLs := response["media_url"].(map[string]interface{})
+	urls := make(FileURLMap, len(rawURLs))
+	for fid, rawURL := range rawURLs {
+		urls[fid] = rawURL.(string)
+	}
+	return urls, nil
 }
