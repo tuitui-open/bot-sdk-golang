@@ -24,7 +24,10 @@ func main() {
 		OnEvent: func(body tuitui.EventBody) {
 			eventName := body["event"].(string)
 			rawJSON, _ := json.MarshalIndent(body, "", "  ")
-			log.Printf("%s 收到事件:%s\n%s", body.BotName(), eventName, rawJSON)
+			// 客户端类型编码见 tuitui 包导出的 DeviceType* 常量。
+			// PC 端：client.Event.IsPCDevice(body.DeviceType())。
+			// App 端：client.Event.IsMobileDevice(body.DeviceType())。
+			log.Printf("%s 收到事件: %s, 来自客户端类型:%s\n%s", body.BotName(), eventName, body.DeviceType(), rawJSON)
 			printMessage(eventName, body, client.Event)
 		},
 		OnError: func(err error) {

@@ -30,7 +30,39 @@ const (
 	EventInteractiveAction  = "interactive_action"
 )
 
+const (
+	DeviceTypeUnknown = "0"
+	DeviceTypeWindows = "1"
+	DeviceTypeMac     = "2"
+	DeviceTypeAndroid = "3" // 安卓和鸿蒙
+	DeviceTypeIOS     = "4"
+	DeviceTypeWeb     = "5" // 电脑端网页版
+	DeviceTypeServer  = "6" // 服务端触发，非客户端
+	DeviceTypeCLI     = "7" // tuitui-cli
+	DeviceTypePad     = "8" // 安卓平板
+	DeviceTypeIPad    = "9" // 苹果 iPad
+)
+
+// IsPCDevice 判断是否为 Windows、macOS 或电脑端网页版。
+func IsPCDevice(deviceType string) bool {
+	return deviceType == DeviceTypeWindows || deviceType == DeviceTypeMac || deviceType == DeviceTypeWeb
+}
+
+// IsMobileDevice 判断是否为 Android、iOS、安卓平板或 iPad。
+func IsMobileDevice(deviceType string) bool {
+	return deviceType == DeviceTypeAndroid || deviceType == DeviceTypeIOS || deviceType == DeviceTypePad || deviceType == DeviceTypeIPad
+}
+
 type EventBody map[string]interface{}
+
+// DeviceType 返回事件来源的设备类型，缺失时返回 DeviceTypeUnknown。
+func (body EventBody) DeviceType() string {
+	deviceType, ok := body["device_type"].(string)
+	if !ok {
+		return DeviceTypeUnknown
+	}
+	return deviceType
+}
 
 // BotName 返回接收该事件的机器人名称，始终返回字符串。
 func (body EventBody) BotName() string {
@@ -108,6 +140,14 @@ func (e *EventAPI) GetDetailedMessageMedia(data interface{}) []DetailedMessageMe
 	return GetDetailedMessageMedia(data)
 }
 func (e *EventAPI) RenderMessageBody(data interface{}) string { return RenderMessageBody(data) }
+
+func (e *EventAPI) IsPCDevice(deviceType string) bool {
+	return IsPCDevice(deviceType)
+}
+
+func (e *EventAPI) IsMobileDevice(deviceType string) bool {
+	return IsMobileDevice(deviceType)
+}
 
 type Subscription struct {
 	ctx     context.Context
@@ -226,6 +266,11 @@ func (s *Subscription) receive(connection *websocket.Conn) error {
 		}
 		botName, _ := event.Header["X-Tuitui-Robot-AppName"].(string)
 		body["bot_name"] = botName
+		deviceType, ok := event.Header["X-Tuitui-Robot-From-Device-Type"].(string)
+		if !ok {
+			deviceType = DeviceTypeUnknown
+		}
+		body["device_type"] = deviceType
 		if err := s.normalizeMessage(body); err != nil {
 			s.report(err)
 			continue
