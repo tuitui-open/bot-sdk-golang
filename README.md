@@ -56,3 +56,11 @@ func main() {
 - `client.Request`：调用尚未封装的原始 Bot API。
 
 消息、帖子的内容支持 Markdown 格式（可交互式消息除外）。
+
+## 用户搜索
+
+```go
+users, err := client.User.Search(ctx, "张三")
+```
+
+返回用户对象切片并保留全部服务端字段，无命中返回非 nil 空切片，错误沿用 SDK error。关键词原样提交。示例见 `examples/user-search/main.go`。

@@ -51,3 +51,11 @@ go run ./examples/agent-report
 # 子 Agent 上报示例
 go run ./examples/agent-report --subagent
 ```
+
+## 搜索用户
+
+```
+go run ./examples/user-search 张三
+```
+
+仅需机器人凭证，输出命中的用户数组，不建立事件订阅。

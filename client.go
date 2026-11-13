@@ -14,6 +14,7 @@ type Client struct {
 	File      *FileAPI
 	FileSpace *FileSpaceAPI
 	Group     *GroupAPI
+	User      *UserAPI
 	Event     *EventAPI
 	Property  *PropertyAPI
 	Agent     *AgentAPI
@@ -34,6 +35,7 @@ func NewClient(appID, appSecret string, options *ClientOptions) *Client {
 	client.File = &FileAPI{http: httpClient, uploader: uploader}
 	client.FileSpace = &FileSpaceAPI{http: httpClient, uploader: uploader, teams: teams}
 	client.Group = &GroupAPI{http: httpClient}
+	client.User = &UserAPI{http: httpClient}
 	client.Event = &EventAPI{config: config, teams: teams}
 	client.Property = &PropertyAPI{http: httpClient}
 	return client
