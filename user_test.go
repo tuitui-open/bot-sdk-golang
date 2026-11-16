@@ -82,7 +82,7 @@ func TestUser隔离实例凭证并支持取消(t *testing.T) {
 	for _, app := range []string{"a", "b"} {
 		app := app
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Query().Get("appid") != app || r.URL.Query().Get("secret") != "secret-"+app {
+			if r.Header.Get("Authorization") != "Bearer "+app+"-secret-"+app || r.URL.RawQuery != "" {
 				t.Error("实例凭证混用")
 			}
 			_, _ = w.Write([]byte(`{"errcode":0,"users":[]}`))

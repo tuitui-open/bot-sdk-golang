@@ -15,8 +15,8 @@ func TestHTTPRequestsUseIndependentTransports(t *testing.T) {
 	var mu sync.Mutex
 	connections := map[net.Conn]struct{}{}
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Query().Get("appid") != "app" || request.URL.Query().Get("secret") != "secret" {
-			t.Fatalf("credentials missing from query: %s", request.URL.RawQuery)
+		if request.Header.Get("Authorization") != "Bearer app-secret" || request.URL.RawQuery != "" {
+			t.Error("请求鉴权应仅通过 Header 传递")
 		}
 		if request.Close {
 			t.Error("请求不应强制关闭连接")
@@ -99,5 +99,56 @@ func TestHTTPAndDecodeErrorsIncludeResponseBody(t *testing.T) {
 				t.Fatalf("unexpected error text:\nwant: %s\n got: %v", test.wantMessage, err)
 			}
 		})
+	}
+}
+
+func TestHTTP使用Header并保留业务查询(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		t.Run(method+"鉴权", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "Bearer app-a-secret-b" || r.URL.RawQuery != "limit=2" {
+					t.Error("Header 凭证或业务查询参数错误")
+				}
+				if r.Method != method {
+					t.Error("请求方法错误")
+				}
+				if method == http.MethodPost {
+					var body map[string]interface{}
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["value"] != float64(1) {
+						t.Error("JSON 正文被改写")
+					}
+					if r.Header.Get("Content-Type") != "application/json" {
+						t.Error("JSON 内容类型错误")
+					}
+				}
+				_, _ = w.Write([]byte(`{"errcode":0}`))
+			}))
+			defer server.Close()
+			client := NewClient("app-a", "secret-b", &ClientOptions{APIBaseURL: server.URL})
+			_, err := client.Request(context.Background(), "/future?limit=2", map[string]interface{}{"value": 1}, &RequestOptions{Method: method})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestHTTP鉴权失败不回退到查询参数(t *testing.T) {
+	for _, status := range []int{401, 200} {
+		calls := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			if r.Header.Get("Authorization") != "Bearer app-secret" || r.URL.RawQuery != "" {
+				t.Error("鉴权方式错误")
+			}
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"errcode":403,"errmsg":"denied"}`))
+		}))
+		client := NewClient("app", "secret", &ClientOptions{APIBaseURL: server.URL})
+		_, err := client.Request(context.Background(), "/denied", nil, nil)
+		server.Close()
+		if err == nil || calls != 1 {
+			t.Fatalf("应直接返回错误且只请求一次：%v, %d", err, calls)
+		}
 	}
 }

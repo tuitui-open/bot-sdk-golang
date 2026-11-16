@@ -56,15 +56,12 @@ func (h *httpAPI) request(ctx context.Context, method, endpoint string, body io.
 	if err != nil {
 		return nil, err
 	}
-	query := requestURL.Query()
-	query.Set("appid", h.config.appID)
-	query.Set("secret", h.config.appSecret)
-	requestURL.RawQuery = query.Encode()
 	req, err := http.NewRequest(method, requestURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 	req = req.WithContext(ctx)
+	req.Header.Set("Authorization", "Bearer "+h.config.appID+"-"+h.config.appSecret)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}

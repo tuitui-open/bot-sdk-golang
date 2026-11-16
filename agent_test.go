@@ -22,6 +22,9 @@ func agentServer(t *testing.T, expected int) (*httptest.Server, <-chan []map[str
 	requests := make([]map[string]interface{}, 0, expected)
 	done := make(chan []map[string]interface{}, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer app-secret" || r.URL.RawQuery != "" {
+			t.Error("Agent 上报未使用所属客户端 Header")
+		}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Error(err)
