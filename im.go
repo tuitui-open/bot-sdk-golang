@@ -65,6 +65,14 @@ type SendIMInteractiveOptions struct {
 	To          ToTarget
 	Interactive InteractiveMessage
 }
+
+// SendIMFileByURLOptions 由服务端下载文件 URL，受服务端 SSRF 策略限制。
+type SendIMFileByURLOptions struct {
+	To       ToTarget
+	URL      string
+	Filename string
+	At       []string
+}
 type SendStrongNoticeOptions struct {
 	Account    string
 	Content    string
@@ -172,6 +180,23 @@ func (i *IMAPI) SendLink(ctx context.Context, options SendIMLinkOptions) (APIRes
 	payload["link"] = options.Link
 	return i.http.post(ctx, "/message/custom/send", payload)
 }
+
+// SendFileByURL 直接发送文件 URL；省略 Filename 时由服务端取 URL 路径中的文件名。
+func (i *IMAPI) SendFileByURL(ctx context.Context, options SendIMFileByURLOptions) (APIResponse, error) {
+	payload, _, _, err := imTargetPayload(options.To, options.At)
+	if err != nil {
+		return nil, err
+	}
+	attachment := map[string]interface{}{"media_id": options.URL}
+	if options.Filename != "" {
+		attachment["filename"] = options.Filename
+	}
+	payload["msgtype"] = "attachment"
+	payload["attachment"] = attachment
+	payload["at"] = options.At
+	return i.http.post(ctx, "/message/custom/send", payload)
+}
+
 func (i *IMAPI) SendFile(ctx context.Context, options SendIMFileOptions) (APIResponse, error) {
 	payload, _, _, err := imTargetPayload(options.To, options.At)
 	if err != nil {

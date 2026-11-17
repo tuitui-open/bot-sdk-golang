@@ -59,3 +59,17 @@ go run ./examples/user-search 张三
 ```
 
 仅需机器人凭证，输出命中的用户数组，不建立事件订阅。
+
+## 直接发送文件 URL
+
+以下示例使用已创建的客户端；请替换为可下载的真实文件 URL。
+
+```go
+response, err := client.IM.SendFileByURL(ctx, tuitui.SendIMFileByURLOptions{
+    To: client.To.Account("alice"),
+    URL: "https://example.com/report.pdf",
+    Filename: "季度报告.pdf",
+})
+```
+
+文件名可省略，默认由服务端取 URL 路径中的文件名。此入口直接发送 IM 文件消息，SDK 不下载、上传或自动识别图片；内网 URL 受服务端 SSRF 策略限制。原有文件发送方法保留下载、识别并上传来源的行为。
